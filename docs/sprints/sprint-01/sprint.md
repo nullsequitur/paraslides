@@ -10,7 +10,7 @@ Implement the pure, zero-dependency **Core Presentation Engine** and the **Hexag
 
 ## 3. Ticket Index
 - [x] **[ticket-01-scaffold.md](./ticket-01-scaffold.md)**: Project file skeleton, shared test fixture factory, and test harness.
-- [ ] **[ticket-02-core-model.md](./ticket-02-core-model.md)**: DeckTopology data structure, bounds validation, and empty-check guards.
+- [x] **[ticket-02-core-model.md](./ticket-02-core-model.md)**: DeckTopology data structure, bounds validation, and empty-check guards.
 - [ ] **[ticket-03-core-state.md](./ticket-03-core-state.md)**: State model and cursor memory arrays (`lastX[y]`, `lastZ[y][x]`).
 - [ ] **[ticket-04-core-navigator.md](./ticket-04-core-navigator.md)**: Deterministic command processor, transition matrix, and locked axes.
 - [ ] **[ticket-05-ports.md](./ticket-05-ports.md)**: Inbound NavigationCommandPort & Outbound StateSubscriberPort interfaces.
