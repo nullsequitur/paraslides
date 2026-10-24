@@ -16,11 +16,12 @@ import {
   COMMAND_ENTER_DETOUR,
   COMMAND_EXIT_DETOUR,
   COMMAND_JUMP_START,
-  COMMAND_JUMP_END
+  COMMAND_JUMP_END,
+  COMMAND_TOGGLE_MAP
 } from '../../core/navigator.js';
 
 /**
- * Standard key-to-command mappings specified in DOMAIN_SPEC.md section 4.
+ * Standard key-to-command mappings specified in DOMAIN_SPEC.md and ROADMAP.md.
  *
  * Mappings:
  * - 'h', 'ArrowLeft'  -> COMMAND_MOVE_LEFT
@@ -31,6 +32,7 @@ import {
  * - 'o', 'Escape'     -> COMMAND_EXIT_DETOUR
  * - '0'               -> COMMAND_JUMP_START
  * - '$'               -> COMMAND_JUMP_END
+ * - 'm', ' '          -> COMMAND_TOGGLE_MAP
  *
  * @constant {Readonly<Record<string, string>>}
  */
@@ -47,7 +49,9 @@ export const KEY_BINDINGS = Object.freeze({
   o: COMMAND_EXIT_DETOUR,
   Escape: COMMAND_EXIT_DETOUR,
   '0': COMMAND_JUMP_START,
-  $: COMMAND_JUMP_END
+  $: COMMAND_JUMP_END,
+  m: COMMAND_TOGGLE_MAP,
+  ' ': COMMAND_TOGGLE_MAP
 });
 
 /**
