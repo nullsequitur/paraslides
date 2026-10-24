@@ -106,17 +106,35 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       dispatcher.dispatch('MOVE_DOWN');  // (1, 0, 0) - 0 detours
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'false');
 
+      // Look-ahead cue on Page 0: adjacent right page (1, 1) has detours!
+      const hintRight = hudContainer.querySelector('.hud-hint-right');
+      const hintLeft = hudContainer.querySelector('.hud-hint-left');
+      const hintDepth = hudContainer.querySelector('.hud-hint-depth');
+
+      assert.ok(hintRight.classList.contains('has-detour-lookahead'));
+      assert.strictEqual(hintRight.getAttribute('data-has-detour-adjacent'), 'true');
+      assert.strictEqual(hintLeft.classList.contains('has-detour-lookahead'), false);
+      assert.ok(hintDepth.classList.contains('is-disabled'));
+
       dispatcher.dispatch('MOVE_RIGHT'); // (1, 1, 0) - 2 detours
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
       assert.ok(cueEl.classList.contains('is-visible'));
       assert.strictEqual(cueEl.classList.contains('is-hidden'), false);
       assert.strictEqual(cueEl.textContent, '[i] Detour (2)');
+      assert.ok(hintDepth.classList.contains('is-active'));
+      assert.strictEqual(hintDepth.textContent, '⤓');
 
       // Navigate to Page 2 (1, 2, 0) which has 0 detours
       dispatcher.dispatch('MOVE_RIGHT');
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'false');
       assert.ok(cueEl.classList.contains('is-hidden'));
       assert.strictEqual(cueEl.textContent, '');
+
+      // Look-ahead cue on Page 2: adjacent left page (1, 1) has detours!
+      assert.ok(hintLeft.classList.contains('has-detour-lookahead'));
+      assert.strictEqual(hintLeft.getAttribute('data-has-detour-adjacent'), 'true');
+      assert.strictEqual(hintRight.classList.contains('has-detour-lookahead'), false);
+      assert.ok(hintDepth.classList.contains('is-disabled'));
 
       renderer.destroy();
     });
@@ -156,6 +174,11 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       // Vertical radar directions strictly locked/disabled in detour mode
       assert.ok(hintUp.classList.contains('is-disabled'));
       assert.ok(hintDown.classList.contains('is-disabled'));
+
+      // In DETOUR mode, depth hint represents return/exit (o)
+      const hintDepth = hudContainer.querySelector('.hud-hint-depth');
+      assert.ok(hintDepth.classList.contains('is-active'));
+      assert.strictEqual(hintDepth.textContent, '⤒');
 
       // At z = 1, can scrub right but not left
       assert.ok(hintLeft.classList.contains('is-disabled'));

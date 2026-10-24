@@ -104,6 +104,7 @@ export const HUD_BASE_STYLES = `
 }
 
 .hud-hint {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -114,6 +115,18 @@ export const HUD_BASE_STYLES = `
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.3);
   transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.hud-hint.has-detour-lookahead::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--hud-accent-detour);
+  box-shadow: 0 0 4px var(--hud-accent-detour);
 }
 
 .hud-hint.is-active {
@@ -447,6 +460,7 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
   const hintLeft = getOrCreateChild(radarEl, 'hud-hint-left', 'span', options);
   const hintDown = getOrCreateChild(radarEl, 'hud-hint-down', 'span', options);
   const hintRight = getOrCreateChild(radarEl, 'hud-hint-right', 'span', options);
+  const hintDepth = getOrCreateChild(radarEl, 'hud-hint-depth', 'span', options);
 
   if (hintUp) {
     hintUp.classList?.add('hud-hint');
@@ -467,6 +481,11 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
     hintRight.classList?.add('hud-hint');
     if (!hintRight.textContent) hintRight.textContent = '→';
     hintRight.setAttribute?.('title', 'Right (l)');
+  }
+  if (hintDepth) {
+    hintDepth.classList?.add('hud-hint');
+    if (!hintDepth.textContent) hintDepth.textContent = '⤓';
+    hintDepth.setAttribute?.('title', 'Detour (i)');
   }
 
   let lockedTimer = null;
@@ -559,21 +578,55 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
       detourCueEl.removeAttribute?.('aria-hidden');
     }
 
-    // 4. Directional Radar Hints
+    // 4. Directional Radar Hints & 3D Compass
     const canMoveLeft = Boolean(event.canMoveLeft);
     const canMoveRight = Boolean(event.canMoveRight);
     const canMoveUp = Boolean(event.canMoveUp);
     const canMoveDown = Boolean(event.canMoveDown);
+    const hasDetourLeft = Boolean(event.hasDetourLeft);
+    const hasDetourRight = Boolean(event.hasDetourRight);
 
     updateHintElement(hintUp, canMoveUp);
     updateHintElement(hintLeft, canMoveLeft);
     updateHintElement(hintDown, canMoveDown);
     updateHintElement(hintRight, canMoveRight);
 
+    // Look-ahead detour indicators on horizontal hints
+    if (hasDetourLeft) {
+      hintLeft.classList?.add('has-detour-lookahead');
+      hintLeft.setAttribute?.('data-has-detour-adjacent', 'true');
+    } else {
+      hintLeft.classList?.remove('has-detour-lookahead');
+      hintLeft.removeAttribute?.('data-has-detour-adjacent');
+    }
+
+    if (hasDetourRight) {
+      hintRight.classList?.add('has-detour-lookahead');
+      hintRight.setAttribute?.('data-has-detour-adjacent', 'true');
+    } else {
+      hintRight.classList?.remove('has-detour-lookahead');
+      hintRight.removeAttribute?.('data-has-detour-adjacent');
+    }
+
+    // Depth cue in compass (z-axis transition)
+    if (hintDepth) {
+      if (mode === MODE_MAIN || z === 0) {
+        hintDepth.textContent = '⤓';
+        hintDepth.setAttribute?.('title', hasDetour ? 'Enter Detour (i)' : 'No Detours');
+        updateHintElement(hintDepth, hasDetour);
+      } else {
+        hintDepth.textContent = '⤒';
+        hintDepth.setAttribute?.('title', 'Exit Detour (o)');
+        updateHintElement(hintDepth, true);
+      }
+    }
+
     radarEl.setAttribute?.('data-can-move-left', String(canMoveLeft));
     radarEl.setAttribute?.('data-can-move-right', String(canMoveRight));
     radarEl.setAttribute?.('data-can-move-up', String(canMoveUp));
     radarEl.setAttribute?.('data-can-move-down', String(canMoveDown));
+    radarEl.setAttribute?.('data-has-detour-left', String(hasDetourLeft));
+    radarEl.setAttribute?.('data-has-detour-right', String(hasDetourRight));
 
     // 5. Locked-axis Warning / Pulse
     const isLockedAttempt = Boolean(event.feedback?.verticalLockedAttempt || event.verticalLockedAttempt);
