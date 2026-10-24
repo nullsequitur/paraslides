@@ -12,9 +12,14 @@
   - **Z-Axis (`z` — Detour Track):** Linear sequence of supplementary, appendix, or backup slides attached directly to a parent slide `(y, x)` without cluttering the main flow.
 - **Vim & Arrow Key Navigation:** Full spatial control using `h`, `j`, `k`, `l`, `i`, `o`, `0`, and `$`.
 - **Intelligent Cursor Memory:** Section switches remember the last visited page (`lastX[y]`), and returning to detours preserves reading position (`lastZ[y][x]`).
-- **Two-State Spatial Theming:** Fluid visual transitions between Main Track (primary hue) and Detour Mode (supplementary hue).
+- **3D Spatial Radar & Lookahead HUD:** Compass indicators warn presenters when adjacent slides contain hidden detour stacks.
+- **Bidirectional URL Hash Routing:** Instant bookmarking and refresh preservation (`#y/x/z`).
+- **2D Overview Map Mode (<kbd>m</kbd> / <kbd>Space</kbd>):** Bird's-eye matrix view with visual detour indicator stacks and click-to-jump navigation.
+- **Print-to-PDF Layout (<kbd>Ctrl</kbd>+<kbd>P</kbd>):** Automatic layout flattening for PDF exports and printing.
+- **Modular Format Translators:** Author presentations directly in Markdown or LaTeX Beamer with native LaTeX math rendering (`$` and `$$`).
 - **Zero Runtime Dependencies:** No npm build steps, no bundlers, and no frameworks required. Pure browser-native HTML, CSS, and ES modules.
-- **Strict Hexagonal Architecture:** Clean separation of pure coordinate logic (`src/core/`), boundary ports (`src/ports/`), and browser adapters (`src/adapters/`).
+- **Strict Hexagonal Architecture:** Clean separation of pure coordinate logic (`src/core/`), boundary ports (`src/ports/`), and browser/format adapters (`src/adapters/`).
+
 
 ---
 
@@ -47,6 +52,9 @@ python3 -m http.server
 | **`o`** | `Escape` | No-op | **Exit Detour** (returns to parent slide) |
 | **`0`** | — | Jump to section start (`x = 0`) | Jump to detour start (`z = 1`) |
 | **`$`** | `Shift + 4` | Jump to section end (`x = X_max`) | Jump to detour end (`z = Z_max`) |
+| **`m`** | `Space` | Toggle 2D Overview Map Mode | Toggle 2D Overview Map Mode |
+| **`Ctrl + P`** | — | Print / Save to PDF | Print / Save to PDF |
+
 
 ---
 
@@ -107,6 +115,89 @@ attachKeyboardAdapter(dispatcher, window);
 
 ---
 
+## Authoring in Markdown
+
+Write presentations with native 3-axis delimiters:
+- `# Section Title`: Splits thematic sections (`Y`-axis)
+- `---`: Splits pages within a section (`X`-axis)
+- `+++`: Splits attached detour slides (`Z`-axis, `z >= 1`)
+
+```markdown
+# Section 1: Intro
+## Primary Slide Title
+Main track content with inline math: $E = mc^2$.
+
++++
+
+## Detour: Technical Deep Dive
+Supplementary depth slide on the Z-axis.
+Display equation:
+$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+
+---
+
+## Page 2
+Second page in Section 1.
+```
+
+Parse directly into Core Topology or HTML:
+
+```javascript
+import { parseMarkdownToTopology, parseMarkdownToHTML } from './src/adapters/parsers/markdown.js';
+
+const topology = parseMarkdownToTopology(markdownSource);
+const html = parseMarkdownToHTML(markdownSource);
+```
+
+---
+
+## Authoring in LaTeX Beamer
+
+paraslides supports bidirectional LaTeX Beamer translation:
+
+```latex
+\documentclass{beamer}
+\begin{document}
+
+\section{Spatial Architecture}
+
+\begin{frame}{Primary Slide}
+Slide content on the main track.
+\end{frame}
+
+\begin{depthframe}{Detour Slide}
+Attached Z-axis detour sequence.
+\end{depthframe}
+
+\end{document}
+```
+
+```javascript
+import { parseLatexToTopology, serializeTopologyToLatex } from './src/adapters/parsers/latex.js';
+
+// LaTeX -> Deck Topology
+const topology = parseLatexToTopology(latexSource);
+
+// Deck Topology -> Compilable Beamer .tex
+const texString = serializeTopologyToLatex(topology);
+```
+
+---
+
+## Outbound Serialization Port
+
+Export presentation topologies to any registered format:
+
+```javascript
+import { serializeDeck } from './src/ports/serialization.js';
+
+const beamerCode = serializeDeck(topology, 'latex');
+const markdownCode = serializeDeck(topology, 'markdown');
+const jsonCode = serializeDeck(topology, 'json');
+```
+
+---
+
 ## Testing
 
 Run the test suite using Node's native test runner (zero external test dependencies):
@@ -115,11 +206,13 @@ Run the test suite using Node's native test runner (zero external test dependenc
 npm test
 ```
 
-Includes 200+ unit and integration tests covering:
-- Pure topology bounds and validation
-- Deterministic state machine transitions & cursor memory
-- Port dispatchers and subscriber contracts
-- DOM loading, keyboard event mapping, viewport rendering, HUD cues, and end-to-end integration flows.
+Includes **284 unit and integration tests** (100% pass rate) across 96 test suites covering:
+- Pure topology bounds, sparse tree structures, and validation
+- Deterministic state machine transitions & cursor memory (`lastX`, `lastZ`)
+- Inbound and Outbound Hexagonal Ports & contracts
+- DOM Loader, Keyboard listener, Viewport CSS transforms, 3D Radar HUD, Hash Router, 2D Overview Map, and Print-to-PDF
+- Markdown, LaTeX Beamer, Math equation rendering, and bidirectional serialization round-trips.
+
 
 ---
 

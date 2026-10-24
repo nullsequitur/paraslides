@@ -94,3 +94,33 @@ When operating under multi-agent orchestration, enforce the rules defined in
    breaking hexagonal boundaries), **HALT and explicitly prompt the user** to ask
    if an **Opus** agent should be spawned. Never spawn an Opus agent without
    explicit user approval.
+
+---
+
+## 6. Continuous Documentation & Granular Git Commit Protocol
+
+1. **Continuous Documentation Updates:**
+   - Whenever new capabilities, adapters, syntax delimiters, CLI commands, or
+     format parsers are added or modified, agents **MUST update `README.md`**
+     (and any relevant specification file) in the same ticket or sprint.
+   - Documentation must never drift or become stale.
+
+2. **Granular Git Commits (One Commit Per Ticket):**
+   - **Never** squash an entire sprint or phase into a single monolithic commit.
+   - Every completed ticket must produce an **atomic, discrete git commit**
+     immediately after its tests pass and its acceptance criteria are satisfied.
+   - **Staging Hygiene:** Stage only the specific files relevant to the ticket
+     (`git add <file1> <file2> ...`), avoiding blind `git add .` whenever possible.
+
+3. **Conventional Commit Standard:**
+   - Commit messages must follow the Conventional Commits specification:
+     `type(scope): ticket-id concise description`
+   - Allowed types: `feat`, `fix`, `test`, `docs`, `refactor`, `perf`, `chore`.
+   - Examples:
+     - `feat(ports): [T04-01] implement serialization port and format registry`
+     - `feat(parsers): [T04-02] implement markdown inbound adapter and delimiters`
+     - `feat(parsers): [T04-03] implement latex math rendering integration`
+     - `feat(parsers): [T04-04] implement bidirectional latex beamer adapter`
+     - `test(integration): [T04-05] add phase 3 end-to-end format translator tests`
+     - `docs(readme): update documentation with phase 2 and phase 3 features`
+

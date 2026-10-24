@@ -127,3 +127,19 @@ docs/sprints/
      `"Perform a root-cause review of failures in docs/sprints/sprint-NN/. Determine necessary adjustments to the roadmap, epic, and subsequent sprints."`
    - If breaking/existential &rarr; Stop all workers and prompt the human user:
      `"A breaking architectural issue has been encountered: [Summary]. Do you want to spawn an Opus agent to resolve this?"`
+
+---
+
+## 5. Continuous Documentation & Granular Git Commit Protocol
+
+1. **Continuous Documentation Updates:**
+   - Any new feature, syntax delimiter, or adapter must be documented in `README.md` concurrently with the code changes.
+   - Documentation is considered a first-class deliverable of every sprint.
+
+2. **Atomic Git Commits Per Ticket:**
+   - Once all unit tests for a ticket pass and its acceptance criteria are checked off:
+     - Stage only the relevant module and test files: `git add <files>`.
+     - Commit using Conventional Commits with ticket reference:
+       `git commit -m "<type>(<scope>): [<TICKET-ID>] <summary>"`
+   - Maintain a clean, bisectable git history where each commit represents a single verifiable increment.
+
