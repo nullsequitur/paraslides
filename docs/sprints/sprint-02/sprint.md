@@ -12,7 +12,7 @@ Wire the pure Core Domain and Ports to browser adapters: HTML DOM Loader, Vim Ke
 ## 3. Ticket Index
 - [x] **[ticket-01-dom-loader.md](./ticket-01-dom-loader.md)**: HTML DOM Loader adapter (`src/adapters/parsers/dom-loader.js`).
 - [x] **[ticket-02-keyboard-adapter.md](./ticket-02-keyboard-adapter.md)**: Vim & Arrow key input adapter (`src/adapters/input/vim-keys.js`).
-- [ ] **[ticket-03-viewport-renderer.md](./ticket-03-viewport-renderer.md)**: CSS Viewport Renderer outbound adapter (`src/adapters/render/viewport.js`).
+- [x] **[ticket-03-viewport-renderer.md](./ticket-03-viewport-renderer.md)**: CSS Viewport Renderer outbound adapter (`src/adapters/render/viewport.js`).
 - [ ] **[ticket-04-hud-renderer.md](./ticket-04-hud-renderer.md)**: Minimal HUD & Radar indicator adapter (`src/adapters/render/hud.js`).
 - [ ] **[ticket-05-standalone-demo.md](./ticket-05-standalone-demo.md)**: Standalone `index.html` presentation and end-to-end integration test.
 
