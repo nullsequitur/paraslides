@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>paraslides — Browser-Native 3D Presentation Engine</title>
+  <style>
+    /* ==========================================================================
+       paraslides: Viewport & HUD Base Styles
+       Conforming to docs/HTML_SCHEMA.md and docs/DOMAIN_SPEC.md
+       ========================================================================== */
+    :root {
+      --bg-main: #12141a;
+      --fg-main: #eef0f6;
+      --accent-main: #5c9eff;
+
+      --bg-detour: #1c141c;
+      --fg-detour: #f6eef6;
+      --accent-detour: #ff8c5c;
+
+      --hud-bg: rgba(18, 20, 26, 0.88);
+      --hud-fg: #eef0f6;
+      --hud-border: rgba(255, 255, 255, 0.12);
+      --hud-accent: #5c9eff;
+      --hud-accent-detour: #ff8c5c;
+      --hud-locked-warning: #ff4757;
+
+      --slide-width: 100vw;
+      --slide-height: 100vh;
+      --transition-speed: 0.5s;
+      --transition-timing: cubic-bezier(0.25, 1, 0.5, 1);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-main);
+      color: var(--fg-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Deck Container */
+    #deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-main);
+      color: var(--fg-main);
+      perspective: 1200px;
+      transform-style: preserve-3d;
+      transition: background-color var(--transition-speed) ease,
+                  color var(--transition-speed) ease;
+    }
+
+    #deck[data-mode="MAIN"] {
+      --bg-current: var(--bg-main);
+      --fg-current: var(--fg-main);
+      --accent-current: var(--accent-main);
+      background-color: var(--bg-main);
+      color: var(--fg-main);
+    }
+
+    #deck[data-mode="DETOUR"] {
+      --bg-current: var(--bg-detour);
+      --fg-current: var(--fg-detour);
+      --accent-current: var(--accent-detour);
+      background-color: var(--bg-detour);
+      color: var(--fg-detour);
+    }
+
+    /* Spatial Section Structure (Y-Axis) */
+    .deck-section {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform var(--transition-speed) var(--transition-timing),
+                  opacity var(--transition-speed) ease;
+      transform: translateY(calc((var(--y, 0) - var(--active-y, 0)) * 100vh));
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .deck-section.is-active-section,
+    .deck-section[data-active="true"] {
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    /* Spatial Page Structure (X-Axis) */
+    .deck-page {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform var(--transition-speed) var(--transition-timing),
+                  opacity var(--transition-speed) ease;
+      transform: translateX(calc((var(--x, 0) - var(--active-x, 0)) * 100vw));
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .deck-page.is-active-page,
+    .deck-page[data-active="true"] {
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    /* Spatial Slide Structure (Z-Axis) */
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4rem 6rem;
+      opacity: 0;
+      pointer-events: none;
+      transform-style: preserve-3d;
+      transition: opacity var(--transition-speed) ease,
+                  transform var(--transition-speed) var(--transition-timing);
+      transform: translateZ(calc((var(--z, 0) - var(--active-z, 0)) * -600px));
+    }
+
+    .slide.is-active,
+    .slide[data-active="true"] {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateZ(0px);
+    }
+
+    /* Detour indicator on primary slides */
+    .slide.slide-main.has-detour::after {
+      content: "";
+      position: absolute;
+      bottom: 2rem;
+      right: 2rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: var(--accent-detour);
+      box-shadow: 0 0 10px var(--accent-detour);
+      opacity: 0.85;
+      animation: pulse-dot 2s infinite ease-in-out;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.3); opacity: 1; }
+    }
+
+    /* Typography & Presentation Aesthetics */
+    .slide-content {
+      max-width: 960px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .tagline {
+      display: inline-block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 1rem;
+      color: var(--accent-current, var(--accent-main));
+    }
+
+    h1 {
+      font-size: 3.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+    }
+
+    p.lead {
+      font-size: 1.35rem;
+      line-height: 1.6;
+      color: rgba(238, 240, 246, 0.85);
+      margin-bottom: 1.75rem;
+      max-width: 800px;
+    }
+
+    p {
+      font-size: 1.1rem;
+      line-height: 1.7;
+      color: rgba(238, 240, 246, 0.75);
+      margin-bottom: 1rem;
+    }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--accent-current, var(--accent-main));
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      margin-bottom: 0;
+      color: rgba(238, 240, 246, 0.7);
+    }
+
+    /* Detour Theme Badge & Callout */
+    .badge-detour {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background-color: rgba(255, 140, 92, 0.15);
+      color: var(--accent-detour);
+      border: 1px solid rgba(255, 140, 92, 0.3);
+      margin-bottom: 1.25rem;
+    }
+
+    .badge-detour::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-detour);
+    }
+
+    .callout {
+      margin-top: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      border-left: 3px solid var(--accent-current, var(--accent-main));
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .callout p {
+      margin-bottom: 0;
+      font-size: 1rem;
+    }
+
+    /* Monospace Key Badges */
+    kbd {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    /* Key Legend Table */
+    .key-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .key-table td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .key-table td:first-child {
+      width: 120px;
+    }
+
+    /* HUD Container Styles */
+    #hud,
+    .paraslides-hud {
+      position: fixed;
+      bottom: 1.75rem;
+      right: 2rem;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 1.15rem;
+      border-radius: 9999px;
+      background-color: var(--hud-bg);
+      color: var(--hud-fg);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.2;
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      user-select: none;
+      pointer-events: auto;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+    }
+
+    #hud[data-mode="MAIN"],
+    .paraslides-hud[data-mode="MAIN"] {
+      --hud-current-accent: var(--hud-accent);
+    }
+
+    #hud[data-mode="DETOUR"],
+    .paraslides-hud[data-mode="DETOUR"] {
+      --hud-current-accent: var(--hud-accent-detour);
+      border-color: rgba(255, 140, 92, 0.4);
+    }
+
+    .hud-coordinates {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .hud-detour-cue {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--hud-current-accent);
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .hud-detour-cue[data-visible="false"],
+    .hud-detour-cue.is-hidden {
+      display: none !important;
+    }
+
+    .hud-radar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      opacity: 0.85;
+    }
+
+    .hud-radar-hint {
+      font-size: 0.8rem;
+      padding: 0.1rem 0.25rem;
+      border-radius: 3px;
+      transition: color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .hud-radar-hint.is-active {
+      color: var(--hud-current-accent);
+      opacity: 1;
+    }
+
+    .hud-radar-hint.is-disabled {
+      color: rgba(255, 255, 255, 0.25);
+      opacity: 0.4;
+    }
+
+    /* Locked-axis visual warning pulse */
+    #hud.is-locked-pulse,
+    #hud[data-locked-attempt="true"] {
+      border-color: var(--hud-locked-warning) !important;
+      box-shadow: 0 0 16px rgba(255, 71, 87, 0.6) !important;
+      animation: hud-locked-shake 0.4s ease-in-out;
+    }
+
+    @keyframes hud-locked-shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+      40%, 60% { transform: translate3d(3px, 0, 0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       Root Deck Container (Mirrors DOMAIN_SPEC 3-Axis Geometry)
+       ======================================================================== -->
+  <main id="deck">
+
+    <!-- ======================================================================
+         Section 0: Introduction
+         ====================================================================== -->
+    <section class="deck-section" data-section-title="Introduction">
+
+      <!-- Page 0.0: Welcome -->
+      <div class="deck-page" data-page-title="Welcome">
+        <article class="slide slide-main" data-slide-title="Welcome to paraslides">
+          <div class="slide-content">
+            <span class="tagline">Zero-Dependency Browser Engine</span>
+            <h1>paraslides</h1>
+            <p class="lead">
+              Parallel decks for extra slides, parallax depth, and paragliding through 3D slides all at once.
+            </p>
+            <div class="callout">
+              <p>
+                Navigate horizontally with <kbd>h</kbd> / <kbd>l</kbd> or <kbd>&larr;</kbd> / <kbd>&rarr;</kbd>.
+                Switch thematic sections vertically with <kbd>j</kbd> / <kbd>k</kbd> or <kbd>&darr;</kbd> / <kbd>&uarr;</kbd>.
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 0.1: What is paraslides -->
+      <div class="deck-page" data-page-title="What is paraslides">
+        <article class="slide slide-main" data-slide-title="What is paraslides">
+          <div class="slide-content">
+            <span class="tagline">Design Philosophy</span>
+            <h2>Parallel Decks & Parallax Depth</h2>
+            <p class="lead">
+              Traditional slide decks force non-linear ideas into a rigid 1D strip. paraslides provides a sparse 3-axis coordinate space designed for high-density technical presentations.
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>HTML-First Portability</h3>
+                <p>Runs natively in any modern browser directly from a file or static server with zero build steps or npm packages.</p>
+              </div>
+              <div class="card">
+                <h3>Strict Hexagonal Core</h3>
+                <p>Pure JavaScript domain model completely decoupled from DOM elements, CSS styles, and event listeners.</p>
+              </div>
+              <div class="card">
+                <h3>Sparse Topology</h3>
+                <p>Zero placeholder grid padding. Only genuine slides exist in both the DOM and internal coordinate tree.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+    </section>
+
+    <!-- ======================================================================
+         Section 1: The 3-Axis Geometry
+         ====================================================================== -->
+    <section class="deck-section" data-section-title="The 3-Axis Geometry">
+
+      <!-- Page 1.0: Y-Sections -->
+      <div class="deck-page" data-page-title="Y-Sections">
+        <article class="slide slide-main" data-slide-title="Vertical Axis: Thematic Sections">
+          <div class="slide-content">
+            <span class="tagline">Spatial Axis: Y</span>
+            <h2>Vertical Axis: Thematic Sections</h2>
+            <p class="lead">
+              Sections represent major narrative themes or presentation chapters arranged along the vertical Y-axis (<kbd>j</kbd> / <kbd>k</kbd>).
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Cursor Memory</h3>
+                <p>Switching between sections remembers the last visited page on that row (<code>lastX[y]</code>) and restores it seamlessly.</p>
+              </div>
+              <div class="card">
+                <h3>Natural Hierarchy</h3>
+                <p>Organize top-level topics vertically without disrupting horizontal slide progressions.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 1.1: X-Pages with Attached Detour Sequence -->
+      <div class="deck-page" data-page-title="X-Pages & Detours">
+        <!-- Main Slide (z = 0) -->
+        <article class="slide slide-main" data-slide-title="Attached Detour Sequence">
+          <div class="slide-content">
+            <span class="tagline">Spatial Axis: X & Z</span>
+            <h2>Attached Detour Sequence</h2>
+            <p class="lead">
+              Pages progress horizontally (<kbd>h</kbd> / <kbd>l</kbd>). Any page can host an attached Z-axis detour sequence for technical deep-dives or backup slides.
+            </p>
+            <div class="callout">
+              <p>
+                Notice the glowing orange indicator at the bottom right. Press <kbd>i</kbd> now to enter this page's attached Detour Track!
+              </p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide 1 (z = 1) -->
+        <article class="slide slide-detour" data-slide-title="Detour Track: Deep-Dive Details">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Track &bull; Depth 1/2</div>
+            <h2>Detour Track: Deep-Dive Details</h2>
+            <p class="lead">
+              You are now in <code>DETOUR_MODE</code> at coordinate <code>(y=1, x=1, z=1)</code>.
+            </p>
+            <p>
+              Detour slides branch off from the main narrative track without disturbing the top-level flow. Horizontal navigation (<kbd>h</kbd> / <kbd>l</kbd>) now scrubs through the attached detour sequence.
+            </p>
+            <div class="callout">
+              <p>
+                Press <kbd>l</kbd> to view the next detour slide, or press <kbd>o</kbd> / <kbd>Escape</kbd> to return to the Main Track.
+              </p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide 2 (z = 2) -->
+        <article class="slide slide-detour" data-slide-title="Detour Track: Visual Shift & Vertical Lock">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Track &bull; Depth 2/2</div>
+            <h2>Detour Track: Visual Shift & Vertical Lock</h2>
+            <p class="lead">
+              The presentation canvas automatically shifts to the detour palette with subtle depth lighting.
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Vertical Axis Lock</h3>
+                <p>Vertical section switching (<kbd>j</kbd> / <kbd>k</kbd>) is strictly locked in detour mode to prevent disorienting jumps. Try pressing <kbd>j</kbd> to observe the HUD warning pulse!</p>
+              </div>
+              <div class="card">
+                <h3>Instant Return</h3>
+                <p>Pressing <kbd>o</kbd> or <kbd>Escape</kbd> instantly returns you to the parent page <code>(y=1, x=1, z=0)</code> on the Main Track.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 1.2: Navigation Model -->
+      <div class="deck-page" data-page-title="Navigation Model">
+        <article class="slide slide-main" data-slide-title="Vim & Arrow Coordinate Navigation">
+          <div class="slide-content">
+            <span class="tagline">Spatial Mechanics</span>
+            <h2>Vim & Arrow Coordinate Navigation</h2>
+            <p class="lead">
+              The navigation system models a deterministic finite state machine with strict boundary checking and cursor memory.
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Main Track (z = 0)</h3>
+                <p><kbd>h</kbd> / <kbd>l</kbd>: Page sequence<br><kbd>j</kbd> / <kbd>k</kbd>: Section switch<br><kbd>i</kbd>: Enter detour (if available)</p>
+              </div>
+              <div class="card">
+                <h3>Detour Track (z &gt; 0)</h3>
+                <p><kbd>h</kbd> / <kbd>l</kbd>: Scrub detour sequence<br><kbd>j</kbd> / <kbd>k</kbd>: Locked (warning pulse)<br><kbd>o</kbd> / <kbd>Esc</kbd>: Exit detour</p>
+              </div>
+              <div class="card">
+                <h3>Boundary Jumps</h3>
+                <p><kbd>0</kbd>: Jump to first slide on axis<br><kbd>$</kbd>: Jump to final slide on axis</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+    </section>
+
+    <!-- ======================================================================
+         Section 2: Live Controls & Vim Keys
+         ====================================================================== -->
+    <section class="deck-section" data-section-title="Live Controls & Vim Keys">
+
+      <!-- Page 2.0: Vim Keybindings & Radar -->
+      <div class="deck-page" data-page-title="Keybindings & Radar">
+        <article class="slide slide-main" data-slide-title="Keyboard Matrix & HUD Radar">
+          <div class="slide-content">
+            <span class="tagline">Interaction Contract</span>
+            <h2>Keyboard Matrix & HUD Radar</h2>
+            <p class="lead">
+              All interactions map to Vim ergonomics and standard presentation clicker keys.
+            </p>
+            <table class="key-table">
+              <tbody>
+                <tr>
+                  <td><kbd>h</kbd> / <kbd>&larr;</kbd></td>
+                  <td>Move Left / Previous Slide (or scrub backwards in Detour)</td>
+                </tr>
+                <tr>
+                  <td><kbd>l</kbd> / <kbd>&rarr;</kbd></td>
+                  <td>Move Right / Next Slide (or scrub forwards in Detour)</td>
+                </tr>
+                <tr>
+                  <td><kbd>j</kbd> / <kbd>&darr;</kbd></td>
+                  <td>Move Down / Next Section (restores section page memory)</td>
+                </tr>
+                <tr>
+                  <td><kbd>k</kbd> / <kbd>&uarr;</kbd></td>
+                  <td>Move Up / Previous Section (restores section page memory)</td>
+                </tr>
+                <tr>
+                  <td><kbd>i</kbd></td>
+                  <td>Enter Detour Mode (when supplementary slides exist)</td>
+                </tr>
+                <tr>
+                  <td><kbd>o</kbd> / <kbd>Esc</kbd></td>
+                  <td>Exit Detour Mode (returns to parent slide)</td>
+                </tr>
+                <tr>
+                  <td><kbd>0</kbd> / <kbd>$</kbd></td>
+                  <td>Jump to start / end of current axis</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 2.1: Try it out -->
+      <div class="deck-page" data-page-title="Try It Out">
+        <article class="slide slide-main" data-slide-title="Hands-on Exploration & Next Steps">
+          <div class="slide-content">
+            <span class="tagline">Ready for Presenting</span>
+            <h2>Hands-on Exploration & Next Steps</h2>
+            <p class="lead">
+              You are ready to paraglide through presentations in 3D.
+            </p>
+            <div class="callout">
+              <p>
+                Experiment by jumping back to Section 1 Page 1 (<kbd>k</kbd> then <kbd>h</kbd>) and stepping into the detour track with <kbd>i</kbd>.
+              </p>
+            </div>
+            <div class="grid-cards" style="margin-top: 1.5rem;">
+              <div class="card">
+                <h3>Extensibility</h3>
+                <p>Supports upcoming Phase 2 features including URL hash routing and overview grid map mode.</p>
+              </div>
+              <div class="card">
+                <h3>Zero Lock-In</h3>
+                <p>Pure HTML schema authored by hand or compiled from future Markdown and LaTeX Beamer adapters.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================================================
+       HUD Container (Status & Radar Display)
+       ======================================================================== -->
+  <aside id="hud" aria-live="polite"></aside>
+
+  <!-- ========================================================================
+       Standard ES Module Presentation Initialization
+       ======================================================================== -->
+  <script type="module">
+    import { loadDeckFromDOM } from './src/adapters/parsers/dom-loader.js';
+    import { createCommandDispatcher } from './src/ports/input.js';
+    import { attachViewportRenderer } from './src/adapters/render/viewport.js';
+    import { attachHudRenderer } from './src/adapters/render/hud.js';
+    import { attachKeyboardAdapter } from './src/adapters/input/vim-keys.js';
+
+    const deckEl = document.getElementById('deck');
+    const hudEl = document.getElementById('hud');
+
+    const { topology, slideMap } = loadDeckFromDOM(deckEl);
+    const dispatcher = createCommandDispatcher(topology);
+
+    attachViewportRenderer(dispatcher, deckEl, { slideMap });
+    attachHudRenderer(dispatcher, hudEl);
+    attachKeyboardAdapter(dispatcher, window);
+  </script>
+
+</body>
+</html>

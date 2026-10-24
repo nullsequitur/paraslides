@@ -14,10 +14,10 @@ Wire the pure Core Domain and Ports to browser adapters: HTML DOM Loader, Vim Ke
 - [x] **[ticket-02-keyboard-adapter.md](./ticket-02-keyboard-adapter.md)**: Vim & Arrow key input adapter (`src/adapters/input/vim-keys.js`).
 - [x] **[ticket-03-viewport-renderer.md](./ticket-03-viewport-renderer.md)**: CSS Viewport Renderer outbound adapter (`src/adapters/render/viewport.js`).
 - [x] **[ticket-04-hud-renderer.md](./ticket-04-hud-renderer.md)**: Minimal HUD & Radar indicator adapter (`src/adapters/render/hud.js`).
-- [ ] **[ticket-05-standalone-demo.md](./ticket-05-standalone-demo.md)**: Standalone `index.html` presentation and end-to-end integration test.
+- [x] **[ticket-05-standalone-demo.md](./ticket-05-standalone-demo.md)**: Standalone `index.html` presentation and end-to-end integration test.
 
 ## 4. Retrospective & Gate
-- **Status:** READY
+- **Status:** COMPLETED (Clean Sprint - Level 0 - Phase 1 MVP Complete)
 - **Evaluator:** Gemini Flash Medium (Main Orchestrator)
 - **Escalation Trigger:**
   - Clean & 100% tests -> Phase 1 Complete (Level 0).
