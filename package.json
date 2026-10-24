@@ -1,0 +1,11 @@
+{
+  "name": "paraslides",
+  "version": "0.1.0",
+  "description": "Zero-dependency, browser-native 3D presentation engine with Vim navigation",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": ["presentation", "slides", "3d", "vim", "navigation"],
+  "license": "MIT"
+}
