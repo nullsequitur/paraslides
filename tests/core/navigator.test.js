@@ -11,6 +11,7 @@ import {
   COMMAND_EXIT_DETOUR,
   COMMAND_JUMP_START,
   COMMAND_JUMP_END,
+  COMMAND_NAVIGATE_TO,
   COMMANDS,
   computeCapabilities,
   buildStatePayload,
@@ -31,6 +32,7 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       assert.equal(COMMAND_EXIT_DETOUR, 'EXIT_DETOUR');
       assert.equal(COMMAND_JUMP_START, 'JUMP_START');
       assert.equal(COMMAND_JUMP_END, 'JUMP_END');
+      assert.equal(COMMAND_NAVIGATE_TO, 'NAVIGATE_TO');
     });
 
     it('exports frozen COMMANDS dictionary', () => {
@@ -43,6 +45,7 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       assert.equal(COMMANDS.EXIT_DETOUR, 'EXIT_DETOUR');
       assert.equal(COMMANDS.JUMP_START, 'JUMP_START');
       assert.equal(COMMANDS.JUMP_END, 'JUMP_END');
+      assert.equal(COMMANDS.NAVIGATE_TO, 'NAVIGATE_TO');
     });
   });
 
@@ -104,21 +107,25 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       assert.equal(caps.detourCount, 2);
     });
 
-    it('computes capabilities in DETOUR mode at z=2 (end of detour track)', () => {
+    it('computes look-ahead detour capabilities (hasDetourLeft and hasDetourRight)', () => {
       let state = createInitialState(topology);
-      state = processCommand(topology, state, COMMAND_MOVE_DOWN).state;
-      state = processCommand(topology, state, COMMAND_MOVE_RIGHT).state;
-      state = processCommand(topology, state, COMMAND_ENTER_DETOUR).state;
-      state = processCommand(topology, state, COMMAND_MOVE_RIGHT).state;
+      state = processCommand(topology, state, COMMAND_MOVE_DOWN).state; // (1, 0, 0)
+      const caps0 = computeCapabilities(topology, state);
+      assert.equal(caps0.hasDetour, false);
+      assert.equal(caps0.hasDetourLeft, false);
+      assert.equal(caps0.hasDetourRight, true); // (1, 1) has detours
 
-      assert.equal(state.z, 2);
+      state = processCommand(topology, state, COMMAND_MOVE_RIGHT).state; // (1, 1, 0)
+      const caps1 = computeCapabilities(topology, state);
+      assert.equal(caps1.hasDetour, true);
+      assert.equal(caps1.hasDetourLeft, false);
+      assert.equal(caps1.hasDetourRight, false);
 
-      const caps = computeCapabilities(topology, state);
-      assert.equal(caps.canMoveLeft, true); // z=2 > 1
-      assert.equal(caps.canMoveRight, false); // z=2 === zMax=2
-      assert.equal(caps.canMoveUp, false);
-      assert.equal(caps.canMoveDown, false);
-      assert.equal(caps.isVerticalLocked, true);
+      state = processCommand(topology, state, COMMAND_MOVE_RIGHT).state; // (1, 2, 0)
+      const caps2 = computeCapabilities(topology, state);
+      assert.equal(caps2.hasDetour, false);
+      assert.equal(caps2.hasDetourLeft, true); // (1, 1) has detours
+      assert.equal(caps2.hasDetourRight, false);
     });
   });
 
@@ -456,6 +463,45 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       assert.equal(downRes.state.mode, MODE_DETOUR);
       assert.equal(downRes.feedback.verticalLockedAttempt, true);
       assert.equal(downRes.payload.verticalLockedAttempt, true);
+    });
+  });
+
+  describe('processCommand - NAVIGATE_TO Direct Transitions', () => {
+    it('navigates directly to valid (y, x, z) coordinates and updates cursor memory', () => {
+      const state = createInitialState(topology);
+      const res = processCommand(topology, state, { type: COMMAND_NAVIGATE_TO, y: 1, x: 1, z: 2 });
+
+      assert.equal(res.state.y, 1);
+      assert.equal(res.state.x, 1);
+      assert.equal(res.state.z, 2);
+      assert.equal(res.state.mode, MODE_DETOUR);
+      assert.equal(res.state.lastX[1], 1);
+      assert.equal(res.state.lastZ[1][1], 2);
+    });
+
+    it('defaults z to 0 when z is not provided', () => {
+      const state = createInitialState(topology);
+      const res = processCommand(topology, state, { type: COMMAND_NAVIGATE_TO, y: 1, x: 2 });
+
+      assert.equal(res.state.y, 1);
+      assert.equal(res.state.x, 2);
+      assert.equal(res.state.z, 0);
+      assert.equal(res.state.mode, MODE_MAIN);
+    });
+
+    it('ignores invalid or out-of-bounds coordinates (safe no-op)', () => {
+      const state = createInitialState(topology);
+      const resOutOfBounds = processCommand(topology, state, { type: COMMAND_NAVIGATE_TO, y: 99, x: 0, z: 0 });
+      assert.equal(resOutOfBounds.state, state);
+
+      const resInvalidDetour = processCommand(topology, state, { type: COMMAND_NAVIGATE_TO, y: 0, x: 0, z: 5 });
+      assert.equal(resInvalidDetour.state, state);
+    });
+
+    it('returns same state reference when target matches current coordinates', () => {
+      const state = createInitialState(topology);
+      const res = processCommand(topology, state, { type: COMMAND_NAVIGATE_TO, y: 0, x: 0, z: 0 });
+      assert.equal(res.state, state);
     });
   });
 

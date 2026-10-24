@@ -226,11 +226,9 @@ export function updateCoordinates(currentState, coordsOrY, xOrTopology, targetZP
     }
   }
 
-  // Rule 2: In main track, record active x for section nextY
-  if (nextZ === 0) {
-    if (nextY >= 0 && nextY < newLastX.length) {
-      newLastX[nextY] = nextX;
-    }
+  // Rule 2: Record active x for section nextY
+  if (nextY >= 0 && nextY < newLastX.length) {
+    newLastX[nextY] = nextX;
   }
 
   // Rule 3: In detour track, record last visited z for page (nextY, nextX)

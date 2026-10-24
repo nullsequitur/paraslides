@@ -7,7 +7,7 @@
  * Pure JavaScript with zero runtime dependencies and zero DOM/CSS/window/document references.
  */
 
-import { getYMax, getXMax, getZMax } from './model.js';
+import { getYMax, getXMax, getZMax, isValidCoordinate } from './model.js';
 import { MODE_MAIN, MODE_DETOUR, updateCoordinates, getLastX, getLastZ } from './state.js';
 
 /**
@@ -59,6 +59,18 @@ export const COMMAND_JUMP_START = 'JUMP_START';
 export const COMMAND_JUMP_END = 'JUMP_END';
 
 /**
+ * Command constant: Direct navigation to specific coordinates { y, x, z }.
+ * @constant {string}
+ */
+export const COMMAND_NAVIGATE_TO = 'NAVIGATE_TO';
+
+/**
+ * Command constant: Toggle 2D overview map mode overlay.
+ * @constant {string}
+ */
+export const COMMAND_TOGGLE_MAP = 'TOGGLE_MAP';
+
+/**
  * Frozen map of all supported navigation commands.
  * @constant {Readonly<{
  *   MOVE_LEFT: string,
@@ -68,7 +80,9 @@ export const COMMAND_JUMP_END = 'JUMP_END';
  *   ENTER_DETOUR: string,
  *   EXIT_DETOUR: string,
  *   JUMP_START: string,
- *   JUMP_END: string
+ *   JUMP_END: string,
+ *   NAVIGATE_TO: string,
+ *   TOGGLE_MAP: string
  * }>}
  */
 export const COMMANDS = Object.freeze({
@@ -79,7 +93,9 @@ export const COMMANDS = Object.freeze({
   ENTER_DETOUR: COMMAND_ENTER_DETOUR,
   EXIT_DETOUR: COMMAND_EXIT_DETOUR,
   JUMP_START: COMMAND_JUMP_START,
-  JUMP_END: COMMAND_JUMP_END
+  JUMP_END: COMMAND_JUMP_END,
+  NAVIGATE_TO: COMMAND_NAVIGATE_TO,
+  TOGGLE_MAP: COMMAND_TOGGLE_MAP
 });
 
 /**
@@ -93,6 +109,8 @@ export const COMMANDS = Object.freeze({
  * - hasDetour: boolean (Z_max(y, x) > 0)
  * - detourCount: integer (Z_max(y, x))
  * - isVerticalLocked: boolean (mode === 'DETOUR')
+ * - hasDetourLeft: boolean (look-ahead: adjacent page x-1 has attached detours)
+ * - hasDetourRight: boolean (look-ahead: adjacent page x+1 has attached detours)
  *
  * @param {object} topology - Immutable deck topology.
  * @param {object} state - Active navigation state.
@@ -103,7 +121,9 @@ export const COMMANDS = Object.freeze({
  *   canMoveDown: boolean,
  *   hasDetour: boolean,
  *   detourCount: number,
- *   isVerticalLocked: boolean
+ *   isVerticalLocked: boolean,
+ *   hasDetourLeft: boolean,
+ *   hasDetourRight: boolean
  * }>} Frozen capabilities object.
  * @throws {TypeError} If topology or state is missing.
  */
@@ -128,6 +148,10 @@ export function computeCapabilities(topology, state) {
   const detourCount = Math.max(0, zMax);
   const isVerticalLocked = isDetour;
 
+  // Look-ahead capabilities for adjacent pages within the current section
+  const hasDetourLeft = !isDetour && state.x > 0 && getZMax(topology, state.y, state.x - 1) > 0;
+  const hasDetourRight = !isDetour && xMax > 0 && state.x < xMax && getZMax(topology, state.y, state.x + 1) > 0;
+
   return Object.freeze({
     canMoveLeft,
     canMoveRight,
@@ -135,7 +159,9 @@ export function computeCapabilities(topology, state) {
     canMoveDown,
     hasDetour,
     detourCount,
-    isVerticalLocked
+    isVerticalLocked,
+    hasDetourLeft,
+    hasDetourRight
   });
 }
 
@@ -315,6 +341,26 @@ export function processCommand(topology, currentState, command) {
           nextState = updateCoordinates(currentState, currentState.y, currentState.x, zMax, topology);
         }
       }
+      break;
+    }
+
+    case COMMAND_NAVIGATE_TO: {
+      if (typeof command === 'object' && command !== null) {
+        const targetY = typeof command.y === 'number' ? command.y : currentState.y;
+        const targetX = typeof command.x === 'number' ? command.x : currentState.x;
+        const targetZ = typeof command.z === 'number' ? command.z : 0;
+
+        if (isValidCoordinate(topology, targetY, targetX, targetZ)) {
+          if (targetY !== currentState.y || targetX !== currentState.x || targetZ !== currentState.z) {
+            nextState = updateCoordinates(currentState, targetY, targetX, targetZ, topology);
+          }
+        }
+      }
+      break;
+    }
+
+    case COMMAND_TOGGLE_MAP: {
+      feedback = { toggleMap: true };
       break;
     }
 
