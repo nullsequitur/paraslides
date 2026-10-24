@@ -408,6 +408,43 @@
       opacity: 0.4;
     }
 
+    .hud-hint {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.15rem;
+      height: 1.15rem;
+      font-size: 0.75rem;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.3);
+      transition: color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .hud-hint.is-active {
+      color: var(--hud-fg);
+      background: rgba(255, 255, 255, 0.18);
+      font-weight: 600;
+    }
+
+    .hud-hint.is-disabled {
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    .hud-hint.has-detour-lookahead::after {
+      content: "";
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background-color: var(--hud-accent-detour);
+      box-shadow: 0 0 4px var(--hud-accent-detour);
+    }
+
     /* Locked-axis visual warning pulse */
     #hud.is-locked-pulse,
     #hud[data-locked-attempt="true"] {
@@ -644,6 +681,14 @@
                   <td><kbd>0</kbd> / <kbd>$</kbd></td>
                   <td>Jump to start / end of current axis</td>
                 </tr>
+                <tr>
+                  <td><kbd>m</kbd> / <kbd>Space</kbd></td>
+                  <td>Toggle 2D Overview Map Mode</td>
+                </tr>
+                <tr>
+                  <td><kbd>Ctrl</kbd> + <kbd>P</kbd></td>
+                  <td>Print / Export PDF (Flattened Static Layout)</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -696,6 +741,9 @@
     import { attachViewportRenderer } from './src/adapters/render/viewport.js';
     import { attachHudRenderer } from './src/adapters/render/hud.js';
     import { attachKeyboardAdapter } from './src/adapters/input/vim-keys.js';
+    import { attachHashRouter } from './src/adapters/input/hash-router.js';
+    import { attachMapMode, injectMapStyles } from './src/adapters/render/map-mode.js';
+    import { attachPrintAdapter, injectPrintStyles } from './src/adapters/render/print.js';
 
     const deckEl = document.getElementById('deck');
     const hudEl = document.getElementById('hud');
@@ -703,9 +751,15 @@
     const { topology, slideMap } = loadDeckFromDOM(deckEl);
     const dispatcher = createCommandDispatcher(topology);
 
+    injectMapStyles();
+    injectPrintStyles();
+
     attachViewportRenderer(dispatcher, deckEl, { slideMap });
     attachHudRenderer(dispatcher, hudEl);
     attachKeyboardAdapter(dispatcher, window);
+    attachHashRouter(dispatcher, window);
+    attachMapMode(dispatcher, deckEl, { topology });
+    attachPrintAdapter(deckEl, window);
   </script>
 
 </body>

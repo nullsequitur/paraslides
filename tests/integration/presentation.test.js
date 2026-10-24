@@ -21,6 +21,9 @@ import { createCommandDispatcher } from '../../src/ports/input.js';
 import { attachViewportRenderer } from '../../src/adapters/render/viewport.js';
 import { attachHudRenderer } from '../../src/adapters/render/hud.js';
 import { attachKeyboardAdapter } from '../../src/adapters/input/vim-keys.js';
+import { attachHashRouter } from '../../src/adapters/input/hash-router.js';
+import { attachMapMode } from '../../src/adapters/render/map-mode.js';
+import { attachPrintAdapter } from '../../src/adapters/render/print.js';
 import {
   createMockElement,
   createStandardMockDeckDOM
@@ -34,9 +37,29 @@ import {
  */
 function createMockWindow(options = {}) {
   const listeners = new Map();
+  let currentHash = options.hash || '';
 
   return {
     document: options.document || { activeElement: null },
+    location: {
+      get hash() {
+        return currentHash;
+      },
+      set hash(val) {
+        currentHash = val;
+      },
+      pathname: '/index.html',
+      search: ''
+    },
+    history: {
+      replaceState(state, title, url) {
+        const hashIdx = url.indexOf('#');
+        if (hashIdx !== -1) {
+          currentHash = url.slice(hashIdx);
+        }
+      }
+    },
+    print() {},
     addEventListener(type, handler) {
       if (!listeners.has(type)) {
         listeners.set(type, new Set());
@@ -359,6 +382,72 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.strictEqual(deckEl.getAttribute('data-mode'), 'DETOUR');
     assert.strictEqual(deckEl.getAttribute('data-active-z'), '2');
 
+    kb.detach();
+    vp.destroy();
+    hud.destroy();
+  });
+
+  it('runs full Phase 2 presentation stack with URL routing, Overview Map mode, and Print fallback', () => {
+    const deckEl = createStandardMockDeckDOM();
+    const hudEl = createMockElement('aside', { id: 'hud' });
+    const mockWin = createMockWindow();
+
+    const { topology, slideMap } = loadDeckFromDOM(deckEl);
+    const dispatcher = createCommandDispatcher(topology);
+
+    const vp = attachViewportRenderer(dispatcher, deckEl, { slideMap });
+    const hud = attachHudRenderer(dispatcher, hudEl);
+    const kb = attachKeyboardAdapter(dispatcher, mockWin);
+    const router = attachHashRouter(dispatcher, mockWin);
+    const map = attachMapMode(dispatcher, deckEl, { topology });
+    const print = attachPrintAdapter(deckEl, mockWin);
+
+    // Initial state: (0, 0, 0)
+    assert.strictEqual(mockWin.location.hash, '#0/0');
+    assert.strictEqual(deckEl.getAttribute('data-print-mode'), 'interleaved');
+
+    // 1. URL Hash routing syncs on movement
+    pressKey(mockWin, 'l'); // (0, 1, 0)
+    assert.strictEqual(mockWin.location.hash, '#0/1');
+
+    pressKey(mockWin, 'j'); // Move down to section 1, page 0: (1, 0, 0)
+    assert.strictEqual(mockWin.location.hash, '#1/0');
+
+    // Look-ahead indicator on HUD compass for page (1, 0, 0): adjacent right page has detours!
+    const hintRight = hudEl.querySelector('.hud-hint-right');
+    assert.ok(hintRight.classList.contains('has-detour-lookahead'));
+
+    // Move to (1, 1, 0) and enter detour
+    pressKey(mockWin, 'l');
+    assert.strictEqual(mockWin.location.hash, '#1/1');
+    pressKey(mockWin, 'i');
+    assert.strictEqual(mockWin.location.hash, '#1/1/1');
+
+    // 2. Overview Map mode toggle with 'm'
+    assert.strictEqual(map.isOpen(), false);
+    pressKey(mockWin, 'm');
+    assert.strictEqual(map.isOpen(), true);
+
+    const mapOverlay = deckEl.querySelector('#paraslides-map');
+    assert.ok(mapOverlay);
+    const cards = mapOverlay.querySelectorAll('.paraslides-map-card');
+    assert.ok(cards.length > 0);
+
+    // Click card for section 0, page 0
+    cards[0].click();
+    assert.strictEqual(map.isOpen(), false);
+    assert.strictEqual(deckEl.getAttribute('data-active-y'), '0');
+    assert.strictEqual(deckEl.getAttribute('data-active-x'), '0');
+    assert.strictEqual(mockWin.location.hash, '#0/0');
+
+    // 3. Print layout modes
+    print.setPrintMode('main-only');
+    assert.strictEqual(deckEl.getAttribute('data-print-mode'), 'main-only');
+
+    // Clean up
+    router.destroy();
+    map.destroy();
+    print.destroy();
     kb.detach();
     vp.destroy();
     hud.destroy();
