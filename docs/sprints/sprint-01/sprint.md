@@ -13,10 +13,10 @@ Implement the pure, zero-dependency **Core Presentation Engine** and the **Hexag
 - [x] **[ticket-02-core-model.md](./ticket-02-core-model.md)**: DeckTopology data structure, bounds validation, and empty-check guards.
 - [x] **[ticket-03-core-state.md](./ticket-03-core-state.md)**: State model and cursor memory arrays (`lastX[y]`, `lastZ[y][x]`).
 - [x] **[ticket-04-core-navigator.md](./ticket-04-core-navigator.md)**: Deterministic command processor, transition matrix, and locked axes.
-- [ ] **[ticket-05-ports.md](./ticket-05-ports.md)**: Inbound NavigationCommandPort & Outbound StateSubscriberPort interfaces.
+- [x] **[ticket-05-ports.md](./ticket-05-ports.md)**: Inbound NavigationCommandPort & Outbound StateSubscriberPort interfaces.
 
 ## 4. Retrospective & Gate
-- **Status:** READY
+- **Status:** COMPLETED (Clean Sprint - Level 0)
 - **Evaluator:** Gemini Flash Medium (Main Orchestrator)
 - **Escalation Trigger:**
   - Clean & 100% tests &rarr; Proceed directly to Sprint 02 (Adapters & HTML Presentation).
