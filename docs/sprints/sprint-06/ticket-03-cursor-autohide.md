@@ -1,6 +1,6 @@
 # Ticket: T06-03 - Fullscreen Cursor Auto-Hide Adapter
 
-- **Status:** TODO
+- **Status:** DONE
 - **Sprint:** Sprint 06
 - **Target Layer:** Adapters (`src/adapters/render/cursor-auto-hide.js`)
 - **Assigned Model Tier:** Default / Inherit
@@ -22,12 +22,14 @@ Implement the Outbound Cursor Auto-Hide Adapter to keep presentation viewports d
    - Export `CURSOR_AUTO_HIDE_STYLES` and `injectCursorAutoHideStyles(doc)`.
 
 ## 2. Acceptance Criteria
-- [ ] Inactivity timer hides cursor after configured `delayMs`.
-- [ ] Mouse movement restores cursor immediately and resets timer.
-- [ ] Respects `fullscreenOnly` option when configured.
-- [ ] Exported stylesheet applies `cursor: none !important` when hidden.
-- [ ] Lifecycle controls (`show`, `hide`, `destroy`) function cleanly without leaking event listeners or timers.
-- [ ] Comprehensive unit tests in `tests/adapters/cursor-auto-hide.test.js`.
+- [x] Inactivity timer hides cursor after configured `delayMs`.
+- [x] Mouse movement restores cursor immediately and resets timer.
+- [x] Respects `fullscreenOnly` option when configured.
+- [x] Exported stylesheet applies `cursor: none !important` when hidden.
+- [x] Lifecycle controls (`show`, `hide`, `destroy`) function cleanly without leaking event listeners or timers.
+- [x] Comprehensive unit tests in `tests/adapters/cursor-auto-hide.test.js`.
 
 ## 3. Worker Notes & Retro Feedback
-[Populated upon completion]
+- Implemented `attachCursorAutoHide`, `injectCursorAutoHideStyles`, and `CURSOR_AUTO_HIDE_STYLES` in `src/adapters/render/cursor-auto-hide.js`.
+- Integrated seamlessly with Fullscreen API (`isFullscreen`) from `fullscreen.js`.
+- All 6 unit tests passing with 100% pass rate. Zero external runtime dependencies.
