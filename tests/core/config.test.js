@@ -21,7 +21,7 @@ describe('Pure Core Presentation Configuration (src/core/config.js)', () => {
       assert.strictEqual(typeof defaults, 'object');
       assert.strictEqual(defaults.cursorAutoHide.enabled, true);
       assert.strictEqual(defaults.cursorAutoHide.delayMs, 2500);
-      assert.strictEqual(defaults.cursorAutoHide.fullscreenOnly, false);
+      assert.strictEqual(defaults.cursorAutoHide.fullscreenOnly, true);
 
       assert.strictEqual(defaults.laserPointer.enabled, true);
       assert.strictEqual(defaults.laserPointer.size, 16);

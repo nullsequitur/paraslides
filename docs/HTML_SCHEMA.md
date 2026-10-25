@@ -148,14 +148,17 @@ fixed-dimension, non-intrusive status indicators:
 - **Interaction:** Toggled via <kbd>p</kbd> (`COMMAND_TOGGLE_LASER`). Tracks pointer movements using hardware-accelerated `translate3d(x, y, 0)`.
 
 ### C. Ephemeral Fading Telestrator
-- **Element:** `<canvas id="telestrator-canvas" class="paraslides-telestrator-canvas" aria-hidden="true"></canvas>`
+- **Elements:**
+  - `<canvas id="telestrator-canvas" class="paraslides-telestrator-canvas" aria-hidden="true"></canvas>`
+  - `<div id="telestrator-pointer" class="paraslides-telestrator-pointer" aria-hidden="true"></div>` (glowing cursor tip dot replacing native crosshair).
 - **State Attributes:** `.is-active`, `data-active="true"`, `data-mode="MAIN"|"DETOUR"`.
 - **CSS Custom Properties:**
   ```css
   --telestrator-color: var(--accent-main, #5c9eff);
   --telestrator-stroke-width: 3.5px;
+  --telestrator-pointer-size: 14px;
   ```
-- **Interaction:** Toggled via <kbd>t</kbd> (`COMMAND_TOGGLE_TELESTRATOR`) and cleared via <kbd>c</kbd> (`COMMAND_CLEAR_TELESTRATOR`). Renders quadratic bezier strokes that smoothly fade away over `fadeDurationMs` via `requestAnimationFrame`.
+- **Interaction:** Toggled via <kbd>t</kbd> (`COMMAND_TOGGLE_TELESTRATOR`) and cleared via <kbd>c</kbd> (`COMMAND_CLEAR_TELESTRATOR`). Renders luminous neon quadratic bezier strokes with an outer glow aura and inner light beam core. Strokes smoothly dissolve away over `fadeDurationMs` via an ease-out phosphor curve (`Math.pow(1 - progress, 1.4)`) via `requestAnimationFrame`.
 
 ### D. Declarative Configuration Block
 Presentation authors can customize presenter tools and navigation parameters without writing JavaScript by declaring JSON inside the document:
@@ -166,7 +169,7 @@ Presentation authors can customize presenter tools and navigation parameters wit
   "cursorAutoHide": {
     "enabled": true,
     "delayMs": 2500,
-    "fullscreenOnly": false
+    "fullscreenOnly": true
   },
   "laserPointer": {
     "enabled": true,

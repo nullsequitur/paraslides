@@ -25,6 +25,8 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
       lineCap: 'butt',
       lineJoin: 'miter',
       globalAlpha: 1,
+      shadowBlur: 0,
+      shadowColor: 'transparent',
       clearRect(x, y, w, h) {
         operations.push({ op: 'clearRect', x, y, w, h });
       },
@@ -41,7 +43,13 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
         operations.push({ op: 'quadraticCurveTo', cpx, cpy, x, y });
       },
       stroke() {
-        operations.push({ op: 'stroke', strokeStyle: this.strokeStyle, globalAlpha: this.globalAlpha });
+        operations.push({
+          op: 'stroke',
+          strokeStyle: this.strokeStyle,
+          globalAlpha: this.globalAlpha,
+          shadowBlur: this.shadowBlur,
+          shadowColor: this.shadowColor
+        });
       },
       save() {
         operations.push({ op: 'save' });
@@ -82,7 +90,10 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
       head: headEl,
       body: bodyEl,
       defaultView: mockWindow,
-      getElementById: (id) => (id === 'telestrator-canvas' ? canvasEl : null),
+      getElementById: (id) => {
+        if (id === 'telestrator-canvas') return canvasEl;
+        return bodyEl.querySelector(`#${id}`);
+      },
       createElement: (tag) => {
         const el = createMockElement(tag);
         if (tag === 'canvas') {
@@ -114,10 +125,12 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
     return { mockDoc, mockWindow, mockCtx, headEl, bodyEl, listeners };
   }
 
-  it('provides base stylesheet containing telestrator canvas styling', () => {
+  it('provides base stylesheet containing telestrator canvas and glowing dot pointer styling', () => {
     assert.ok(typeof TELESTRATOR_BASE_STYLES === 'string');
     assert.ok(TELESTRATOR_BASE_STYLES.includes('paraslides-telestrator-canvas'));
+    assert.ok(TELESTRATOR_BASE_STYLES.includes('paraslides-telestrator-pointer'));
     assert.ok(TELESTRATOR_BASE_STYLES.includes('--telestrator-color'));
+    assert.ok(TELESTRATOR_BASE_STYLES.includes('cursor: none !important'));
   });
 
   it('injects style element into document head once', () => {
@@ -134,7 +147,7 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
     assert.strictEqual(second, style);
   });
 
-  it('initializes inactive and mounts full-screen canvas element into container', () => {
+  it('initializes inactive and mounts full-screen canvas and glowing pointer dot into container', () => {
     const { mockDoc, mockWindow, bodyEl } = createMockEnvironment();
     const mockDispatcher = {
       subscribe: () => () => {}
@@ -150,10 +163,14 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
     assert.ok(canvas);
     assert.strictEqual(canvas.classList.contains('is-active'), false);
 
+    const pointer = bodyEl.querySelector('#telestrator-pointer');
+    assert.ok(pointer);
+    assert.strictEqual(pointer.classList.contains('is-active'), false);
+
     telestrator.destroy();
   });
 
-  it('toggles drawing mode on COMMAND_TOGGLE_TELESTRATOR feedback event', () => {
+  it('toggles drawing mode and activates glowing dot pointer on COMMAND_TOGGLE_TELESTRATOR', () => {
     const { mockDoc, mockWindow, bodyEl } = createMockEnvironment();
     let subscriber = null;
     const mockDispatcher = {
@@ -173,23 +190,48 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
     });
 
     const canvas = bodyEl.querySelector('#telestrator-canvas');
+    const pointer = bodyEl.querySelector('#telestrator-pointer');
 
     // Toggle on
     subscriber({ feedback: { toggleTelestrator: true }, mode: MODE_MAIN, z: 0 });
     assert.strictEqual(telestrator.isActive(), true);
     assert.strictEqual(canvas.classList.contains('is-active'), true);
+    assert.strictEqual(pointer.classList.contains('is-active'), true);
     assert.strictEqual(toggledState, true);
 
     // Toggle off
     subscriber({ feedback: { toggleTelestrator: true }, mode: MODE_MAIN, z: 0 });
     assert.strictEqual(telestrator.isActive(), false);
     assert.strictEqual(canvas.classList.contains('is-active'), false);
+    assert.strictEqual(pointer.classList.contains('is-active'), false);
     assert.strictEqual(toggledState, false);
 
     telestrator.destroy();
   });
 
-  it('captures drawing strokes and executes quadratic bezier smoothing', (t, done) => {
+  it('updates glowing dot cursor position on pointer move', () => {
+    const { mockDoc, mockWindow, bodyEl } = createMockEnvironment();
+    const mockDispatcher = {
+      subscribe: () => () => {}
+    };
+
+    const telestrator = attachTelestrator(mockDispatcher, bodyEl, {
+      document: mockDoc,
+      window: mockWindow,
+      pointerSize: 14
+    });
+
+    const pointer = bodyEl.querySelector('#telestrator-pointer');
+    assert.ok(pointer);
+
+    mockDoc.dispatchEvent({ type: 'pointermove', clientX: 250, clientY: 180 });
+    const style = pointer.getAttribute('style') || '';
+    assert.ok(style.includes('translate3d(243px, 173px, 0)'), `Style should be translated by pointer: ${style}`);
+
+    telestrator.destroy();
+  });
+
+  it('captures drawing strokes and renders glowing line with bezier smoothing and fading decay', (t, done) => {
     const { mockDoc, mockWindow, mockCtx, bodyEl } = createMockEnvironment();
     const mockDispatcher = {
       subscribe: () => () => {}
@@ -215,8 +257,10 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
       try {
         const hasBezier = mockCtx.operations.some((op) => op.op === 'quadraticCurveTo');
         const hasStroke = mockCtx.operations.some((op) => op.op === 'stroke');
+        const hasGlow = mockCtx.operations.some((op) => op.op === 'stroke' && op.shadowBlur > 0);
         assert.ok(hasBezier, 'Should render with quadratic bezier curve');
         assert.ok(hasStroke, 'Should call stroke');
+        assert.ok(hasGlow, 'Should render glowing outer halo with shadowBlur');
         telestrator.destroy();
         done();
       } catch (err) {
@@ -302,10 +346,12 @@ describe('Ephemeral Fading Telestrator Adapter (src/adapters/render/telestrator.
     });
 
     assert.ok(bodyEl.querySelector('#telestrator-canvas'));
+    assert.ok(bodyEl.querySelector('#telestrator-pointer'));
 
     telestrator.destroy();
 
     assert.strictEqual(unsubscribed, true);
     assert.strictEqual(bodyEl.querySelector('#telestrator-canvas'), null);
+    assert.strictEqual(bodyEl.querySelector('#telestrator-pointer'), null);
   });
 });

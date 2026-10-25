@@ -19,6 +19,7 @@ export const TELESTRATOR_BASE_STYLES = `
 :root {
   --telestrator-color: var(--accent-main, #5c9eff);
   --telestrator-stroke-width: 3.5px;
+  --telestrator-pointer-size: 14px;
 }
 
 #telestrator-canvas,
@@ -38,12 +39,46 @@ export const TELESTRATOR_BASE_STYLES = `
 #telestrator-canvas.is-active,
 .paraslides-telestrator-canvas.is-active {
   pointer-events: auto !important;
-  cursor: crosshair;
+  cursor: none !important;
 }
 
 #telestrator-canvas[data-mode="DETOUR"],
 .paraslides-telestrator-canvas[data-mode="DETOUR"] {
   --telestrator-color: var(--accent-detour, #ff8c5c);
+}
+
+#telestrator-pointer,
+.paraslides-telestrator-pointer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--telestrator-pointer-size, 14px);
+  height: var(--telestrator-pointer-size, 14px);
+  border-radius: 50%;
+  background-color: var(--telestrator-current-color, var(--telestrator-color));
+  box-shadow: 0 0 8px var(--telestrator-current-color, var(--telestrator-color)),
+              0 0 18px var(--telestrator-current-color, var(--telestrator-color));
+  pointer-events: none;
+  z-index: 10001;
+  transform: translate3d(-100px, -100px, 0);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.03s ease-out;
+  will-change: transform, opacity;
+}
+
+#telestrator-pointer.is-active,
+.paraslides-telestrator-pointer.is-active {
+  opacity: 1;
+}
+
+#telestrator-pointer[data-mode="DETOUR"],
+.paraslides-telestrator-pointer[data-mode="DETOUR"] {
+  --telestrator-current-color: var(--accent-detour, #ff8c5c);
+}
+
+body.is-cursor-hidden #telestrator-pointer,
+body[data-cursor-hidden="true"] #telestrator-pointer {
+  opacity: 0 !important;
 }
 `.trim();
 
@@ -76,6 +111,7 @@ export function injectTelestratorStyles(doc = (typeof document !== 'undefined' ?
  * @param {object} [options={}] - Options.
  * @param {number} [options.fadeDurationMs=3000] - Duration in ms before strokes fully fade away (0 disables auto-fade).
  * @param {number} [options.strokeWidth=3.5] - Pen stroke thickness in px.
+ * @param {number} [options.pointerSize=14] - Cursor tip glowing dot diameter in px.
  * @param {string|null} [options.color=null] - Fixed stroke color override. If null, adopts active presentation accent.
  * @param {Document|object} [options.document] - Target document override.
  * @param {Window|object} [options.window] - Target window override.
@@ -102,6 +138,7 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
 
   const fadeDurationMs = typeof options.fadeDurationMs === 'number' ? Math.max(0, options.fadeDurationMs) : 3000;
   const strokeWidth = typeof options.strokeWidth === 'number' ? Math.max(1, options.strokeWidth) : 3.5;
+  const pointerSize = typeof options.pointerSize === 'number' ? Math.max(4, options.pointerSize) : 14;
   const explicitColor = options.color || null;
 
   if (options.injectStyles) {
@@ -122,6 +159,23 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
     created = true;
   }
 
+  // Create or locate pointer element (glowing pen tip dot)
+  let pointerEl = (doc && typeof doc.getElementById === 'function') ? doc.getElementById('telestrator-pointer') : null;
+  let pointerCreated = false;
+
+  if (!pointerEl && doc && typeof doc.createElement === 'function' && parent) {
+    pointerEl = doc.createElement('div');
+    pointerEl.id = 'telestrator-pointer';
+    pointerEl.classList?.add?.('paraslides-telestrator-pointer');
+    pointerEl.setAttribute?.('aria-hidden', 'true');
+    pointerEl.setAttribute?.('data-mode', 'MAIN');
+    if (explicitColor) {
+      pointerEl.setAttribute?.('style', `--telestrator-current-color: ${explicitColor}`);
+    }
+    parent.appendChild(pointerEl);
+    pointerCreated = true;
+  }
+
   const ctx = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
 
   let currentMode = MODE_MAIN;
@@ -130,6 +184,19 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
   let currentStroke = null;
   const strokes = [];
   let animFrameId = null;
+
+  function updatePointerPosition(e) {
+    if (!pointerEl || !e) return;
+    const clientX = e.clientX ?? 0;
+    const clientY = e.clientY ?? 0;
+    const half = pointerSize / 2;
+    const transformStyle = `transform: translate3d(${clientX - half}px, ${clientY - half}px, 0);`;
+
+    const existingStyle = pointerEl.getAttribute?.('style') || '';
+    const cleanedStyle = existingStyle.replace(/transform:[^;]+;?/gi, '').trim();
+    const newStyle = cleanedStyle ? `${cleanedStyle} ${transformStyle}` : transformStyle;
+    pointerEl.setAttribute?.('style', newStyle);
+  }
 
   function resizeCanvas() {
     if (!canvas) return;
@@ -178,14 +245,16 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
         continue;
       }
 
-      // Calculate stroke alpha decay
+      // Calculate stroke alpha decay with animated easing
       let alpha = 1;
-      if (fadeDurationMs > 0) {
-        const age = now - stroke.startTime;
-        alpha = Math.max(0, 1 - (age / fadeDurationMs));
+      if (fadeDurationMs > 0 && stroke.endTime !== null) {
+        const age = now - stroke.endTime;
+        const progress = Math.min(1, Math.max(0, age / fadeDurationMs));
+        // Ease-out curve for smooth, organic phosphor dissolve (not a hard delete)
+        alpha = Math.max(0, Math.pow(1 - progress, 1.4));
       }
 
-      if (alpha <= 0) {
+      if (alpha <= 0.005) {
         // Stroke has completely faded away; prune it to free memory
         strokes.splice(i, 1);
         continue;
@@ -193,35 +262,53 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
 
       hasActiveStrokes = true;
 
+      const points = stroke.points;
+      const buildPath = () => {
+        ctx.beginPath?.();
+        if (points.length === 1) {
+          ctx.moveTo?.(points[0].x, points[0].y);
+          ctx.lineTo?.(points[0].x + 0.1, points[0].y + 0.1);
+        } else if (points.length === 2) {
+          ctx.moveTo?.(points[0].x, points[0].y);
+          ctx.lineTo?.(points[1].x, points[1].y);
+        } else {
+          ctx.moveTo?.(points[0].x, points[0].y);
+          for (let j = 1; j < points.length - 1; j++) {
+            const xc = (points[j].x + points[j + 1].x) / 2;
+            const yc = (points[j].y + points[j + 1].y) / 2;
+            ctx.quadraticCurveTo?.(points[j].x, points[j].y, xc, yc);
+          }
+          const last = points[points.length - 1];
+          const prev = points[points.length - 2];
+          ctx.quadraticCurveTo?.(prev.x, prev.y, last.x, last.y);
+        }
+      };
+
       ctx.save?.();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      ctx.beginPath?.();
-      const points = stroke.points;
-
-      if (points.length === 1) {
-        ctx.moveTo?.(points[0].x, points[0].y);
-        ctx.lineTo?.(points[0].x + 0.1, points[0].y + 0.1);
-      } else if (points.length === 2) {
-        ctx.moveTo?.(points[0].x, points[0].y);
-        ctx.lineTo?.(points[1].x, points[1].y);
-      } else {
-        ctx.moveTo?.(points[0].x, points[0].y);
-        for (let j = 1; j < points.length - 1; j++) {
-          const xc = (points[j].x + points[j + 1].x) / 2;
-          const yc = (points[j].y + points[j + 1].y) / 2;
-          ctx.quadraticCurveTo?.(points[j].x, points[j].y, xc, yc);
-        }
-        const last = points[points.length - 1];
-        const prev = points[points.length - 2];
-        ctx.quadraticCurveTo?.(prev.x, prev.y, last.x, last.y);
+      // Pass 1: Glowing outer halo / aura
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.width;
+      if (ctx.shadowBlur !== undefined) {
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = Math.round(14 * alpha);
       }
-
+      buildPath();
       ctx.stroke?.();
+
+      // Pass 2: Intense radiant core beam
+      if (ctx.shadowBlur !== undefined) {
+        ctx.shadowBlur = 0;
+      }
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, stroke.width * 0.35);
+      ctx.globalAlpha = alpha * 0.85;
+      buildPath();
+      ctx.stroke?.();
+
       ctx.restore?.();
     }
 
@@ -243,21 +330,25 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
 
   function handlePointerDown(e) {
     if (!isActive) return;
+    updatePointerPosition(e);
     isDrawing = true;
     const clientX = e.clientX ?? 0;
     const clientY = e.clientY ?? 0;
+    const now = Date.now();
 
     currentStroke = {
-      startTime: Date.now(),
+      startTime: now,
+      endTime: null,
       color: getStrokeColor(),
       width: strokeWidth,
-      points: [{ x: clientX, y: clientY, time: Date.now() }]
+      points: [{ x: clientX, y: clientY, time: now }]
     };
     strokes.push(currentStroke);
     renderStrokes();
   }
 
   function handlePointerMove(e) {
+    updatePointerPosition(e);
     if (!isActive || !isDrawing || !currentStroke) return;
     const clientX = e.clientX ?? 0;
     const clientY = e.clientY ?? 0;
@@ -270,7 +361,10 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
   function handlePointerUp() {
     if (!isDrawing) return;
     isDrawing = false;
-    currentStroke = null;
+    if (currentStroke) {
+      currentStroke.endTime = Date.now();
+      currentStroke = null;
+    }
     startAnimationLoop();
   }
 
@@ -305,6 +399,16 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
       }
     }
 
+    if (pointerEl) {
+      if (isActive) {
+        pointerEl.classList?.add?.('is-active');
+        pointerEl.setAttribute?.('data-active', 'true');
+      } else {
+        pointerEl.classList?.remove?.('is-active');
+        pointerEl.removeAttribute?.('data-active');
+      }
+    }
+
     if (typeof options.onToggle === 'function') {
       options.onToggle(isActive);
     }
@@ -322,6 +426,15 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
     canvas.addEventListener('pointermove', handlePointerMove);
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointercancel', handlePointerUp);
+  }
+
+  // Pointer move tracking across window and document
+  const moveTargets = [doc, parent].filter(Boolean);
+  for (const target of moveTargets) {
+    if (typeof target.addEventListener === 'function') {
+      target.addEventListener('pointermove', updatePointerPosition, { passive: true });
+      target.addEventListener('mousemove', updatePointerPosition, { passive: true });
+    }
   }
 
   // Window resize listener
@@ -347,6 +460,9 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
     if (canvas) {
       canvas.setAttribute?.('data-mode', currentMode);
     }
+    if (pointerEl) {
+      pointerEl.setAttribute?.('data-mode', currentMode);
+    }
   });
 
   const destroy = function destroy() {
@@ -360,12 +476,23 @@ export function attachTelestrator(dispatcher, container = null, options = {}) {
       canvas.removeEventListener('pointercancel', handlePointerUp);
     }
 
+    for (const target of moveTargets) {
+      if (typeof target.removeEventListener === 'function') {
+        target.removeEventListener('pointermove', updatePointerPosition);
+        target.removeEventListener('mousemove', updatePointerPosition);
+      }
+    }
+
     if (win && typeof win.removeEventListener === 'function') {
       win.removeEventListener('resize', resizeCanvas);
     }
 
     if (created && canvas && canvas.parentNode) {
       canvas.parentNode.removeChild(canvas);
+    }
+
+    if (pointerCreated && pointerEl && pointerEl.parentNode) {
+      pointerEl.parentNode.removeChild(pointerEl);
     }
 
     if (unsubscribe) {

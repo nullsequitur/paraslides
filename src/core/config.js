@@ -15,7 +15,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   cursorAutoHide: Object.freeze({
     enabled: true,
     delayMs: 2500,
-    fullscreenOnly: false
+    fullscreenOnly: true
   }),
   laserPointer: Object.freeze({
     enabled: true,

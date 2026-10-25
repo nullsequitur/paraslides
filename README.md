@@ -104,11 +104,12 @@ Live presentation delivery tools operating with zero external runtime dependenci
   - Automatically synchronizes with presentation themes: glows with `--accent-main` in the Main track and switches to `--accent-detour` when deep diving inside detours.
 - **Ephemeral Fading Telestrator (<kbd>t</kbd> to toggle, <kbd>c</kbd> to clear):**
   - Full-screen `<canvas>` overlay enabling live ink annotations across your slides.
-  - Uses quadratic bezier smoothing between points for natural, fluid penmanship.
-  - Ephemeral decay loop: drawn strokes gracefully fade away over a configurable decay timeout (default 3s), freeing canvas memory automatically.
+  - Replaces the default crosshair with an intuitive glowing dot pen tip (`#telestrator-pointer`) tracking the mouse at 60fps.
+  - Draws luminous neon lines featuring quadratic bezier curve smoothing, an outer aura glow, and an inner radiant beam core.
+  - Ephemeral animated decay: completed strokes gracefully dissolve away over a configurable decay timeout (default 3s) using an ease-out phosphor curve rather than a hard delete, freeing canvas memory automatically.
   - Immediate flush: press <kbd>c</kbd> to clear all active annotations instantly.
 - **Fullscreen Cursor Auto-Hide:**
-  - Hides the mouse cursor automatically after 2.5s of inactivity, restoring it instantly on any mouse movement or keystroke.
+  - Hides the mouse cursor automatically after 2.5s of inactivity specifically in Fullscreen mode (<kbd>f</kbd>), keeping standard windowed browsing undisturbed. Movement or keystrokes instantly restore cursor visibility.
 
 ### Declarative Presentation Configuration
 Configure presentation behaviors, tool dimensions, colors, and decay durations directly via JSON without editing JavaScript code:
@@ -119,7 +120,7 @@ Configure presentation behaviors, tool dimensions, colors, and decay durations d
   "cursorAutoHide": {
     "enabled": true,
     "delayMs": 2500,
-    "fullscreenOnly": false
+    "fullscreenOnly": true
   },
   "laserPointer": {
     "enabled": true,
