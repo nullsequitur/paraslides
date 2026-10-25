@@ -395,13 +395,12 @@ describe('HTML DOM Loader Adapter (src/adapters/parsers/dom-loader.js)', () => {
       dispatcher.dispatch('MOVE_RIGHT');
       assert.strictEqual(dispatcher.getState().x, 1);
 
-      // Move down to section 1
+      // Move down to section 1 (preserves sticky column 1 in Vim navigation)
       dispatcher.dispatch('MOVE_DOWN');
       assert.strictEqual(dispatcher.getState().y, 1);
+      assert.strictEqual(dispatcher.getState().x, 1);
 
       // Enter detour on section 1, page 1
-      dispatcher.dispatch('MOVE_RIGHT'); // page 1 of section 1
-      assert.strictEqual(dispatcher.getState().x, 1);
       dispatcher.dispatch('ENTER_DETOUR');
       assert.strictEqual(dispatcher.getState().mode, 'DETOUR');
       assert.strictEqual(dispatcher.getState().z, 1);

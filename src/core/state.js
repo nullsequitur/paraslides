@@ -111,6 +111,8 @@ export function createInitialState(input) {
     x: 0,
     z: 0,
     mode: MODE_MAIN,
+    desiredX: 0,
+    isStickyEol: false,
     lastX,
     lastZ
   };
@@ -138,6 +140,8 @@ export function cloneState(state) {
     x: state.x,
     z: state.z,
     mode: state.mode,
+    desiredX: state.desiredX !== undefined ? state.desiredX : state.x,
+    isStickyEol: Boolean(state.isStickyEol),
     lastX: [...state.lastX],
     lastZ: state.lastZ.map((row) => [...row])
   });
@@ -216,6 +220,25 @@ export function updateCoordinates(currentState, coordsOrY, xOrTopology, targetZP
   const oldY = currentState.y;
   const oldX = currentState.x;
 
+  let desiredX = currentState.desiredX !== undefined ? currentState.desiredX : currentState.x;
+  let isStickyEol = Boolean(currentState.isStickyEol);
+
+  if (coordsOrY && typeof coordsOrY === 'object') {
+    if (coordsOrY.desiredX !== undefined) {
+      desiredX = coordsOrY.desiredX;
+    }
+    if (coordsOrY.isStickyEol !== undefined) {
+      isStickyEol = Boolean(coordsOrY.isStickyEol);
+    }
+    if (coordsOrY.desiredX === undefined && coordsOrY.isStickyEol === undefined && nextY === oldY && nextX !== oldX) {
+      desiredX = nextX;
+      isStickyEol = false;
+    }
+  } else if (typeof coordsOrY === 'number' && nextY === oldY && nextX !== oldX) {
+    desiredX = nextX;
+    isStickyEol = false;
+  }
+
   const newLastX = [...currentState.lastX];
   const newLastZ = currentState.lastZ.map((row) => [...row]);
 
@@ -250,6 +273,8 @@ export function updateCoordinates(currentState, coordsOrY, xOrTopology, targetZP
     x: nextX,
     z: nextZ,
     mode: nextMode,
+    desiredX,
+    isStickyEol,
     lastX: newLastX,
     lastZ: newLastZ
   });
@@ -259,6 +284,29 @@ export function updateCoordinates(currentState, coordsOrY, xOrTopology, targetZP
  * Alias for updateCoordinates.
  */
 export const updateState = updateCoordinates;
+
+/**
+ * Reads the desired/target sticky column index for horizontal alignment.
+ *
+ * @param {object} state - Active presentation state.
+ * @returns {number} Desired column index or -1 if invalid.
+ */
+export function getDesiredX(state) {
+  if (!state || typeof state !== 'object') {
+    return -1;
+  }
+  return state.desiredX !== undefined ? state.desiredX : (typeof state.x === 'number' ? state.x : -1);
+}
+
+/**
+ * Checks whether sticky end-of-line mode ($) is currently active.
+ *
+ * @param {object} state - Active presentation state.
+ * @returns {boolean} True if sticky EOL is active.
+ */
+export function isStickyEol(state) {
+  return Boolean(state?.isStickyEol);
+}
 
 /**
  * Resets the detour cursor memory (lastZ) to 1.

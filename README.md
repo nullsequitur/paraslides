@@ -40,19 +40,23 @@ python3 -m http.server
 
 ---
 
-## Navigation Controls
+## Navigation Controls (Vim Document Metaphor)
+
+paraslides treats your slide deck like an open document in Vim: **Sections are Rows** and **Pages are Columns**.
 
 | Key | Alternative | Action in Main Track (`z === 0`) | Action in Detour Mode (`z > 0`) |
 | :--- | :--- | :--- | :--- |
-| **`l`** | `ArrowRight` | Next page within section (`x + 1`) | Next detour slide (`z + 1`) |
-| **`h`** | `ArrowLeft` | Previous page within section (`x - 1`) | Previous detour slide (`z - 1`) |
-| **`j`** | `ArrowDown` | Next section (`y + 1`, restores `x`) | **Locked** (emits warning pulse) |
-| **`k`** | `ArrowUp` | Previous section (`y - 1`, restores `x`) | **Locked** (emits warning pulse) |
+| **`l`** | `ArrowRight` | Next column (`x + 1`, wraps to next row at row end) | Next detour slide (`z + 1`) |
+| **`h`** | `ArrowLeft` | Previous column (`x - 1`, wraps to prev row at row start) | Previous detour slide (`z - 1`) |
+| **`j`** | `ArrowDown` | Next row (`y + 1`, preserves sticky column `desiredX`) | **Locked** (emits warning pulse) |
+| **`k`** | `ArrowUp` | Previous row (`y - 1`, preserves sticky column `desiredX`) | **Locked** (emits warning pulse) |
+| **`Space`** / **`Enter`** | — | **Linear next slide** (advances forward across pages & rows) | Next detour slide / return to main track |
 | **`i`** | — | **Enter Detour** (if slide has detours) | No-op (already in Detour) |
 | **`o`** | `Escape` | No-op | **Exit Detour** (returns to parent slide) |
-| **`0`** | — | Jump to section start (`x = 0`) | Jump to detour start (`z = 1`) |
-| **`$`** | `Shift + 4` | Jump to section end (`x = X_max`) | Jump to detour end (`z = Z_max`) |
-| **`m`** | `Space` | Toggle 2D Overview Map Mode | Toggle 2D Overview Map Mode |
+| **`0`** | — | Jump to row start (`x = 0`, resets sticky column) | Jump to detour start (`z = 1`) |
+| **`$`** | `Shift + 4` | Jump to row end (`x = X_max`, sticky end-of-row) | Jump to detour end (`z = Z_max`) |
+| **`gg`** / **`G`** | — | Jump to top row (`y = 0`) / bottom row (`y = Y_max`) | **Locked** (emits warning pulse) |
+| **`m`** | — | Toggle 2D Overview Map Mode | Toggle 2D Overview Map Mode |
 | **`Ctrl + P`** | — | Print / Save to PDF | Print / Save to PDF |
 
 

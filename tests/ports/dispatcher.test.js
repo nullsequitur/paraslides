@@ -228,24 +228,33 @@ describe('Inbound & Outbound Hexagonal Ports', () => {
       assert.equal(dispatcher.getState().x, 1);
     });
 
-    it('navigates sections with MOVE_DOWN and restores cursor memory lastX', () => {
+    it('navigates sections with MOVE_DOWN and maintains Vim sticky column', () => {
       const dispatcher = createCommandDispatcher(topology);
 
-      // Move right in section 0 to page 1
+      // Move right in section 0 to page 1 (desiredX = 1)
       dispatcher.dispatch(COMMAND_MOVE_RIGHT);
       assert.equal(dispatcher.getState().x, 1);
 
-      // Move down to section 1: remembered lastX for section 1 is 0
+      // Move down to section 1: preserves desiredX = 1 (section 1 has 3 pages)
       dispatcher.dispatch(COMMAND_MOVE_DOWN);
       assert.equal(dispatcher.getState().y, 1);
-      assert.equal(dispatcher.getState().x, 0);
+      assert.equal(dispatcher.getState().x, 1);
 
-      // Move right in section 1 to page 2
-      dispatcher.dispatch(COMMAND_MOVE_RIGHT);
+      // Move right in section 1 to page 2 (desiredX = 2)
       dispatcher.dispatch(COMMAND_MOVE_RIGHT);
       assert.equal(dispatcher.getState().x, 2);
 
-      // Move back up to section 0: should restore lastX[0] === 1
+      // Move down to section 2 (only has 1 page, x=0): clamps to 0 while remembering desiredX=2
+      dispatcher.dispatch(COMMAND_MOVE_DOWN);
+      assert.equal(dispatcher.getState().y, 2);
+      assert.equal(dispatcher.getState().x, 0);
+
+      // Move back up to section 1: restores desiredX = 2
+      dispatcher.dispatch(COMMAND_MOVE_UP);
+      assert.equal(dispatcher.getState().y, 1);
+      assert.equal(dispatcher.getState().x, 2);
+
+      // Move back up to section 0 (has 2 pages, x=0, 1): clamps to 1
       dispatcher.dispatch(COMMAND_MOVE_UP);
       assert.equal(dispatcher.getState().y, 0);
       assert.equal(dispatcher.getState().x, 1);

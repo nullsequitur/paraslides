@@ -12,7 +12,9 @@ import {
   updateState,
   resetDetourMemory,
   getLastX,
-  getLastZ
+  getLastZ,
+  getDesiredX,
+  isStickyEol
 } from '../../src/core/state.js';
 import { createMockDeck, createMockSections, MOCK_DECK_SPEC } from '../fixtures/deck-fixture.js';
 
@@ -360,6 +362,60 @@ describe('Coordinate State & Cursor Memory (src/core/state.js)', () => {
       assert.equal(getLastZ(state, 1, 5), -1);
       assert.equal(getLastZ(state, -1, 0), -1);
       assert.equal(getLastZ(null, 0, 0), -1);
+    });
+  });
+
+  describe('Vim Sticky Column & Desired Column Memory', () => {
+    it('initializes desiredX to 0 and isStickyEol to false', () => {
+      const topology = createDeckTopology(createMockSections());
+      const state = createInitialState(topology);
+
+      assert.equal(state.desiredX, 0);
+      assert.equal(state.isStickyEol, false);
+      assert.equal(getDesiredX(state), 0);
+      assert.equal(isStickyEol(state), false);
+    });
+
+    it('updates desiredX on horizontal movement without explicit flag', () => {
+      const topology = createDeckTopology(createMockSections());
+      let state = createInitialState(topology);
+
+      state = updateCoordinates(state, { x: 1 });
+      assert.equal(state.x, 1);
+      assert.equal(state.desiredX, 1);
+      assert.equal(state.isStickyEol, false);
+
+      state = updateCoordinates(state, { x: 0 });
+      assert.equal(state.x, 0);
+      assert.equal(state.desiredX, 0);
+      assert.equal(state.isStickyEol, false);
+    });
+
+    it('preserves desiredX when section y changes without explicit desiredX', () => {
+      const topology = createDeckTopology(createMockSections());
+      let state = createInitialState(topology);
+
+      state = updateCoordinates(state, { x: 1, desiredX: 2 });
+      assert.equal(state.desiredX, 2);
+
+      // Section changes
+      const next = updateCoordinates(state, { y: 1, x: 0 });
+      assert.equal(next.y, 1);
+      assert.equal(next.desiredX, 2);
+    });
+
+    it('tracks isStickyEol flag and updates via getters', () => {
+      const topology = createDeckTopology(createMockSections());
+      let state = createInitialState(topology);
+
+      state = updateCoordinates(state, { x: 1, isStickyEol: true });
+      assert.equal(state.isStickyEol, true);
+      assert.equal(isStickyEol(state), true);
+
+      // Explicit horizontal reset clears isStickyEol
+      state = updateCoordinates(state, { x: 0 });
+      assert.equal(state.isStickyEol, false);
+      assert.equal(isStickyEol(state), false);
     });
   });
 });

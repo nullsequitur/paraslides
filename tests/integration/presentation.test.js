@@ -159,15 +159,8 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.ok(slide010.classList.contains('is-active'));
     assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 2/2');
 
-    // Boundary check: pressing 'l' at max X should no-op
+    // Continuous section wrap: pressing 'l' at max X wraps to section 1, page 0
     pressKey(mockWin, 'l');
-    assert.strictEqual(deckEl.getAttribute('data-active-x'), '1');
-
-    // ------------------------------------------------------------------------
-    // Step 2: Switch Section Down with 'j' -> (1, 0, 0)
-    // ------------------------------------------------------------------------
-    pressKey(mockWin, 'j');
-
     assert.strictEqual(deckEl.getAttribute('data-active-y'), '1');
     assert.strictEqual(deckEl.getAttribute('data-active-x'), '0');
     assert.strictEqual(sec0.classList.contains('is-active-section'), false);
@@ -180,7 +173,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Page 1/3');
 
     // ------------------------------------------------------------------------
-    // Step 3: Navigate Right to page with Detours -> (1, 1, 0)
+    // Step 2: Navigate Right to page with Detours -> (1, 1, 0)
     // ------------------------------------------------------------------------
     pressKey(mockWin, 'l');
 
@@ -337,10 +330,10 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.strictEqual(deckEl.getAttribute('data-mode'), 'MAIN');
     assert.strictEqual(deckEl.getAttribute('data-active-z'), '0');
 
-    // ArrowUp -> Move up to section 0 restoring lastX[0] = 0
+    // ArrowUp -> Move up to section 0 preserving Vim sticky column 1
     pressKey(mockWin, 'ArrowUp');
     assert.strictEqual(deckEl.getAttribute('data-active-y'), '0');
-    assert.strictEqual(deckEl.getAttribute('data-active-x'), '0');
+    assert.strictEqual(deckEl.getAttribute('data-active-x'), '1');
 
     kb.detach();
     vp.destroy();
@@ -409,6 +402,9 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     // 1. URL Hash routing syncs on movement
     pressKey(mockWin, 'l'); // (0, 1, 0)
     assert.strictEqual(mockWin.location.hash, '#0/1');
+
+    pressKey(mockWin, 'h'); // Return to (0, 0, 0)
+    assert.strictEqual(mockWin.location.hash, '#0/0');
 
     pressKey(mockWin, 'j'); // Move down to section 1, page 0: (1, 0, 0)
     assert.strictEqual(mockWin.location.hash, '#1/0');

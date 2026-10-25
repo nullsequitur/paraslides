@@ -71,6 +71,30 @@ export const COMMAND_NAVIGATE_TO = 'NAVIGATE_TO';
 export const COMMAND_TOGGLE_MAP = 'TOGGLE_MAP';
 
 /**
+ * Command constant: Advance to next slide in linear presentation flow.
+ * @constant {string}
+ */
+export const COMMAND_NEXT_SLIDE = 'NEXT_SLIDE';
+
+/**
+ * Command constant: Jump to first section (row 0), preserving sticky column.
+ * @constant {string}
+ */
+export const COMMAND_JUMP_TOP_ROW = 'JUMP_TOP_ROW';
+
+/**
+ * Command constant: Jump to last section (row yMax), preserving sticky column.
+ * @constant {string}
+ */
+export const COMMAND_JUMP_BOTTOM_ROW = 'JUMP_BOTTOM_ROW';
+
+/**
+ * Command constant: Jump to specific section (row), preserving sticky column.
+ * @constant {string}
+ */
+export const COMMAND_JUMP_ROW = 'JUMP_ROW';
+
+/**
  * Frozen map of all supported navigation commands.
  * @constant {Readonly<{
  *   MOVE_LEFT: string,
@@ -82,7 +106,11 @@ export const COMMAND_TOGGLE_MAP = 'TOGGLE_MAP';
  *   JUMP_START: string,
  *   JUMP_END: string,
  *   NAVIGATE_TO: string,
- *   TOGGLE_MAP: string
+ *   TOGGLE_MAP: string,
+ *   NEXT_SLIDE: string,
+ *   JUMP_TOP_ROW: string,
+ *   JUMP_BOTTOM_ROW: string,
+ *   JUMP_ROW: string
  * }>}
  */
 export const COMMANDS = Object.freeze({
@@ -95,7 +123,11 @@ export const COMMANDS = Object.freeze({
   JUMP_START: COMMAND_JUMP_START,
   JUMP_END: COMMAND_JUMP_END,
   NAVIGATE_TO: COMMAND_NAVIGATE_TO,
-  TOGGLE_MAP: COMMAND_TOGGLE_MAP
+  TOGGLE_MAP: COMMAND_TOGGLE_MAP,
+  NEXT_SLIDE: COMMAND_NEXT_SLIDE,
+  JUMP_TOP_ROW: COMMAND_JUMP_TOP_ROW,
+  JUMP_BOTTOM_ROW: COMMAND_JUMP_BOTTOM_ROW,
+  JUMP_ROW: COMMAND_JUMP_ROW
 });
 
 /**
@@ -140,13 +172,17 @@ export function computeCapabilities(topology, state) {
   const xMax = getXMax(topology, state.y);
   const zMax = getZMax(topology, state.y, state.x);
 
-  const canMoveLeft = isDetour ? state.z > 1 : state.x > 0;
-  const canMoveRight = isDetour ? (zMax > 0 && state.z < zMax) : (xMax > 0 && state.x < xMax);
+  const canMoveLeft = isDetour ? state.z > 1 : (state.x > 0 || state.y > 0);
+  const canMoveRight = isDetour ? (zMax > 0 && state.z < zMax) : (state.x < xMax || state.y < yMax);
   const canMoveUp = isDetour ? false : state.y > 0;
   const canMoveDown = isDetour ? false : (yMax > 0 && state.y < yMax);
   const hasDetour = zMax > 0;
   const detourCount = Math.max(0, zMax);
   const isVerticalLocked = isDetour;
+
+  // Section wrap indicators
+  const willWrapNextSection = !isDetour && state.x >= xMax && state.y < yMax;
+  const willWrapPrevSection = !isDetour && state.x === 0 && state.y > 0;
 
   // Look-ahead capabilities for adjacent pages within the current section
   const hasDetourLeft = !isDetour && state.x > 0 && getZMax(topology, state.y, state.x - 1) > 0;
@@ -160,6 +196,8 @@ export function computeCapabilities(topology, state) {
     hasDetour,
     detourCount,
     isVerticalLocked,
+    willWrapNextSection,
+    willWrapPrevSection,
     hasDetourLeft,
     hasDetourRight
   });
@@ -184,6 +222,9 @@ export function computeCapabilities(topology, state) {
  *   hasDetour: boolean,
  *   detourCount: number,
  *   isVerticalLocked: boolean,
+ *   willWrapNextSection: boolean,
+ *   willWrapPrevSection: boolean,
+ *   desiredX: number,
  *   capabilities: object,
  *   feedback: object
  * }>} Frozen state snapshot payload.
@@ -197,6 +238,8 @@ export function buildStatePayload(topology, state, feedback = {}) {
     x: state.x,
     z: state.z,
     mode: state.mode,
+    desiredX: state.desiredX !== undefined ? state.desiredX : state.x,
+    isStickyEol: Boolean(state.isStickyEol),
     ...capabilities,
     capabilities,
     feedback: frozenFeedback,
@@ -242,7 +285,25 @@ export function processCommand(topology, currentState, command) {
       if (!isDetour) {
         const xMax = getXMax(topology, currentState.y);
         if (currentState.x < xMax) {
-          nextState = updateCoordinates(currentState, currentState.y, currentState.x + 1, 0, topology);
+          nextState = updateCoordinates(currentState, {
+            y: currentState.y,
+            x: currentState.x + 1,
+            z: 0,
+            desiredX: currentState.x + 1,
+            isStickyEol: false
+          }, topology);
+        } else {
+          // Continuous section wrap: if x === xMax and there is a next section, wrap to y + 1, x = 0
+          const yMax = getYMax(topology);
+          if (currentState.y < yMax) {
+            nextState = updateCoordinates(currentState, {
+              y: currentState.y + 1,
+              x: 0,
+              z: 0,
+              desiredX: 0,
+              isStickyEol: false
+            }, topology);
+          }
         }
       } else {
         const zMax = getZMax(topology, currentState.y, currentState.x);
@@ -256,7 +317,26 @@ export function processCommand(topology, currentState, command) {
     case COMMAND_MOVE_LEFT: {
       if (!isDetour) {
         if (currentState.x > 0) {
-          nextState = updateCoordinates(currentState, currentState.y, currentState.x - 1, 0, topology);
+          nextState = updateCoordinates(currentState, {
+            y: currentState.y,
+            x: currentState.x - 1,
+            z: 0,
+            desiredX: currentState.x - 1,
+            isStickyEol: false
+          }, topology);
+        } else {
+          // Continuous section wrap: if x === 0 and there is a previous section, wrap to y - 1, x = xMax(y - 1)
+          if (currentState.y > 0) {
+            const prevY = currentState.y - 1;
+            const prevXMax = getXMax(topology, prevY);
+            nextState = updateCoordinates(currentState, {
+              y: prevY,
+              x: prevXMax,
+              z: 0,
+              desiredX: prevXMax,
+              isStickyEol: false
+            }, topology);
+          }
         }
       } else {
         if (currentState.z > 1) {
@@ -271,10 +351,21 @@ export function processCommand(topology, currentState, command) {
         const yMax = getYMax(topology);
         if (currentState.y < yMax) {
           const newY = currentState.y + 1;
-          const rememberedX = getLastX(currentState, newY);
           const maxXInNewSection = getXMax(topology, newY);
-          const targetX = Math.min(rememberedX >= 0 ? rememberedX : 0, maxXInNewSection);
-          nextState = updateCoordinates(currentState, newY, targetX, 0, topology);
+          let targetX;
+          if (currentState.isStickyEol) {
+            targetX = maxXInNewSection;
+          } else {
+            const desired = typeof currentState.desiredX === 'number' ? currentState.desiredX : currentState.x;
+            targetX = Math.min(desired, maxXInNewSection);
+          }
+          nextState = updateCoordinates(currentState, {
+            y: newY,
+            x: targetX,
+            z: 0,
+            desiredX: currentState.desiredX,
+            isStickyEol: currentState.isStickyEol
+          }, topology);
         }
       } else {
         feedback = { verticalLockedAttempt: true };
@@ -286,10 +377,21 @@ export function processCommand(topology, currentState, command) {
       if (!isDetour) {
         if (currentState.y > 0) {
           const newY = currentState.y - 1;
-          const rememberedX = getLastX(currentState, newY);
           const maxXInNewSection = getXMax(topology, newY);
-          const targetX = Math.min(rememberedX >= 0 ? rememberedX : 0, maxXInNewSection);
-          nextState = updateCoordinates(currentState, newY, targetX, 0, topology);
+          let targetX;
+          if (currentState.isStickyEol) {
+            targetX = maxXInNewSection;
+          } else {
+            const desired = typeof currentState.desiredX === 'number' ? currentState.desiredX : currentState.x;
+            targetX = Math.min(desired, maxXInNewSection);
+          }
+          nextState = updateCoordinates(currentState, {
+            y: newY,
+            x: targetX,
+            z: 0,
+            desiredX: currentState.desiredX,
+            isStickyEol: currentState.isStickyEol
+          }, topology);
         }
       } else {
         feedback = { verticalLockedAttempt: true };
@@ -318,8 +420,14 @@ export function processCommand(topology, currentState, command) {
 
     case COMMAND_JUMP_START: {
       if (!isDetour) {
-        if (currentState.x !== 0) {
-          nextState = updateCoordinates(currentState, currentState.y, 0, 0, topology);
+        if (currentState.x !== 0 || currentState.isStickyEol || currentState.desiredX !== 0) {
+          nextState = updateCoordinates(currentState, {
+            y: currentState.y,
+            x: 0,
+            z: 0,
+            desiredX: 0,
+            isStickyEol: false
+          }, topology);
         }
       } else {
         if (currentState.z !== 1) {
@@ -332,14 +440,144 @@ export function processCommand(topology, currentState, command) {
     case COMMAND_JUMP_END: {
       if (!isDetour) {
         const xMax = getXMax(topology, currentState.y);
-        if (currentState.x !== xMax) {
-          nextState = updateCoordinates(currentState, currentState.y, xMax, 0, topology);
+        if (currentState.x !== xMax || !currentState.isStickyEol) {
+          nextState = updateCoordinates(currentState, {
+            y: currentState.y,
+            x: xMax,
+            z: 0,
+            desiredX: Infinity,
+            isStickyEol: true
+          }, topology);
         }
       } else {
         const zMax = getZMax(topology, currentState.y, currentState.x);
-        if (currentState.z !== zMax) {
+        if (currentState.z !== zMax && zMax > 0) {
           nextState = updateCoordinates(currentState, currentState.y, currentState.x, zMax, topology);
         }
+      }
+      break;
+    }
+
+    case COMMAND_NEXT_SLIDE: {
+      if (!isDetour) {
+        const xMax = getXMax(topology, currentState.y);
+        if (currentState.x < xMax) {
+          nextState = updateCoordinates(currentState, {
+            y: currentState.y,
+            x: currentState.x + 1,
+            z: 0,
+            desiredX: currentState.x + 1,
+            isStickyEol: false
+          }, topology);
+        } else {
+          const yMax = getYMax(topology);
+          if (currentState.y < yMax) {
+            nextState = updateCoordinates(currentState, {
+              y: currentState.y + 1,
+              x: 0,
+              z: 0,
+              desiredX: 0,
+              isStickyEol: false
+            }, topology);
+          }
+        }
+      } else {
+        const zMax = getZMax(topology, currentState.y, currentState.x);
+        if (currentState.z < zMax) {
+          nextState = updateCoordinates(currentState, currentState.y, currentState.x, currentState.z + 1, topology);
+        } else {
+          // At end of detour sequence, return to main track and advance
+          const xMax = getXMax(topology, currentState.y);
+          if (currentState.x < xMax) {
+            nextState = updateCoordinates(currentState, {
+              y: currentState.y,
+              x: currentState.x + 1,
+              z: 0,
+              desiredX: currentState.x + 1,
+              isStickyEol: false
+            }, topology);
+          } else {
+            const yMax = getYMax(topology);
+            if (currentState.y < yMax) {
+              nextState = updateCoordinates(currentState, {
+                y: currentState.y + 1,
+                x: 0,
+                z: 0,
+                desiredX: 0,
+                isStickyEol: false
+              }, topology);
+            }
+          }
+        }
+      }
+      break;
+    }
+
+    case COMMAND_JUMP_TOP_ROW: {
+      if (!isDetour) {
+        if (currentState.y !== 0) {
+          const maxX = getXMax(topology, 0);
+          const targetX = currentState.isStickyEol
+            ? maxX
+            : Math.min(typeof currentState.desiredX === 'number' ? currentState.desiredX : currentState.x, maxX);
+          nextState = updateCoordinates(currentState, {
+            y: 0,
+            x: targetX,
+            z: 0,
+            desiredX: currentState.desiredX,
+            isStickyEol: currentState.isStickyEol
+          }, topology);
+        }
+      } else {
+        feedback = { verticalLockedAttempt: true };
+      }
+      break;
+    }
+
+    case COMMAND_JUMP_BOTTOM_ROW: {
+      if (!isDetour) {
+        const yMax = getYMax(topology);
+        if (currentState.y !== yMax) {
+          const maxX = getXMax(topology, yMax);
+          const targetX = currentState.isStickyEol
+            ? maxX
+            : Math.min(typeof currentState.desiredX === 'number' ? currentState.desiredX : currentState.x, maxX);
+          nextState = updateCoordinates(currentState, {
+            y: yMax,
+            x: targetX,
+            z: 0,
+            desiredX: currentState.desiredX,
+            isStickyEol: currentState.isStickyEol
+          }, topology);
+        }
+      } else {
+        feedback = { verticalLockedAttempt: true };
+      }
+      break;
+    }
+
+    case COMMAND_JUMP_ROW: {
+      if (!isDetour) {
+        const yMax = getYMax(topology);
+        const rawTarget = typeof command === 'object' && command !== null
+          ? (command.targetY ?? command.y ?? 0)
+          : 0;
+        const clampedY = Math.max(0, Math.min(rawTarget, yMax));
+        if (currentState.y !== clampedY) {
+          const maxX = getXMax(topology, clampedY);
+          const targetX = currentState.isStickyEol
+            ? maxX
+            : Math.min(typeof currentState.desiredX === 'number' ? currentState.desiredX : currentState.x, maxX);
+          nextState = updateCoordinates(currentState, {
+            y: clampedY,
+            x: targetX,
+            z: 0,
+            desiredX: currentState.desiredX,
+            isStickyEol: currentState.isStickyEol
+          }, topology);
+        }
+      } else {
+        feedback = { verticalLockedAttempt: true };
       }
       break;
     }
@@ -352,7 +590,13 @@ export function processCommand(topology, currentState, command) {
 
         if (isValidCoordinate(topology, targetY, targetX, targetZ)) {
           if (targetY !== currentState.y || targetX !== currentState.x || targetZ !== currentState.z) {
-            nextState = updateCoordinates(currentState, targetY, targetX, targetZ, topology);
+            nextState = updateCoordinates(currentState, {
+              y: targetY,
+              x: targetX,
+              z: targetZ,
+              desiredX: targetX,
+              isStickyEol: false
+            }, topology);
           }
         }
       }
