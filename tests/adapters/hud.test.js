@@ -43,14 +43,15 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       // Coordinate readout at (0, 0, 0)
       const coordEl = hudContainer.querySelector('.hud-coordinates');
       assert.ok(coordEl);
-      assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 1/2');
+      assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
 
-      // Detour cue should be hidden at (0, 0, 0) since it has 0 detours
+      // Detour cue displays dimmed [i] at (0, 0, 0) since it has 0 detours
       const cueEl = hudContainer.querySelector('.hud-detour-cue');
       assert.ok(cueEl);
-      assert.strictEqual(cueEl.textContent, '');
-      assert.strictEqual(cueEl.getAttribute('data-visible'), 'false');
-      assert.ok(cueEl.classList.contains('is-hidden'));
+      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
+      assert.ok(cueEl.classList.contains('is-disabled'));
+      assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'true');
 
       // Radar hints at (0, 0, 0): can only move Down and Right
       const hintUp = hudContainer.querySelector('.hud-hint-up');
@@ -85,14 +86,14 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       const renderer = attachHudRenderer(dispatcher, hudContainer);
 
       assert.strictEqual(hudContainer.querySelector('.hud-coordinates'), customCoords);
-      assert.strictEqual(customCoords.textContent, 'Sec 1/3 · Page 1/2');
+      assert.strictEqual(customCoords.textContent, 'Col 1/2 · Row 1/3');
 
       renderer.destroy();
     });
   });
 
-  describe('Detour Availability Cue in MAIN Mode', () => {
-    it('displays [i] Detour (N) when navigating to a page with detours', () => {
+  describe('Detour Availability Cue and Radar Wrapping in MAIN Mode', () => {
+    it('displays morphing [i] button slot and section wrapping cues', () => {
       const deckElement = createStandardMockDeckDOM();
       const { topology } = loadDeckFromDOM(deckElement);
       const dispatcher = createCommandDispatcher(topology);
@@ -101,40 +102,47 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       const renderer = attachHudRenderer(dispatcher, hudContainer);
 
       const cueEl = hudContainer.querySelector('.hud-detour-cue');
-
-      // Navigate to Section 1, Page 1 which has 2 detours
-      dispatcher.dispatch('MOVE_DOWN');  // (1, 0, 0) - 0 detours
-      assert.strictEqual(cueEl.getAttribute('data-visible'), 'false');
-
-      // Look-ahead cue on Page 0: adjacent right page (1, 1) has detours!
       const hintRight = hudContainer.querySelector('.hud-hint-right');
       const hintLeft = hudContainer.querySelector('.hud-hint-left');
       const hintDepth = hudContainer.querySelector('.hud-hint-depth');
 
-      assert.ok(hintRight.classList.contains('has-detour-lookahead'));
-      assert.strictEqual(hintRight.getAttribute('data-has-detour-adjacent'), 'true');
+      // Navigate to Section 1, Page 0 (1, 0, 0) - 0 detours
+      dispatcher.dispatch('MOVE_DOWN');
+      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
+      assert.ok(cueEl.classList.contains('is-disabled'));
+      assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'true');
+
+      // Prev section wrapping cue: at (1, 0, 0) hintLeft should show ↰
+      assert.strictEqual(hintLeft.textContent, '↰');
+      assert.ok(hintLeft.classList.contains('is-active'));
+      assert.ok(hintLeft.classList.contains('is-wrap-hint'));
+
+      // Lookahead indicators are removed
+      assert.strictEqual(hintRight.classList.contains('has-detour-lookahead'), false);
       assert.strictEqual(hintLeft.classList.contains('has-detour-lookahead'), false);
       assert.ok(hintDepth.classList.contains('is-disabled'));
 
-      dispatcher.dispatch('MOVE_RIGHT'); // (1, 1, 0) - 2 detours
+      // Navigate to Page 1 (1, 1, 0) - 2 detours
+      dispatcher.dispatch('MOVE_RIGHT');
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
-      assert.ok(cueEl.classList.contains('is-visible'));
-      assert.strictEqual(cueEl.classList.contains('is-hidden'), false);
-      assert.strictEqual(cueEl.textContent, '[i] Detour (2)');
+      assert.ok(cueEl.classList.contains('is-active'));
+      assert.strictEqual(cueEl.classList.contains('is-disabled'), false);
+      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'false');
       assert.ok(hintDepth.classList.contains('is-active'));
       assert.strictEqual(hintDepth.textContent, '⤓');
 
-      // Navigate to Page 2 (1, 2, 0) which has 0 detours
+      // Navigate to Page 2 (1, 2, 0) - 0 detours (last page of Section 1)
       dispatcher.dispatch('MOVE_RIGHT');
-      assert.strictEqual(cueEl.getAttribute('data-visible'), 'false');
-      assert.ok(cueEl.classList.contains('is-hidden'));
-      assert.strictEqual(cueEl.textContent, '');
+      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.ok(cueEl.classList.contains('is-disabled'));
+      assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'true');
 
-      // Look-ahead cue on Page 2: adjacent left page (1, 1) has detours!
-      assert.ok(hintLeft.classList.contains('has-detour-lookahead'));
-      assert.strictEqual(hintLeft.getAttribute('data-has-detour-adjacent'), 'true');
-      assert.strictEqual(hintRight.classList.contains('has-detour-lookahead'), false);
-      assert.ok(hintDepth.classList.contains('is-disabled'));
+      // Next section wrapping cue: at (1, 2, 0) hintRight should show ↳
+      assert.strictEqual(hintRight.textContent, '↳');
+      assert.ok(hintRight.classList.contains('is-active'));
+      assert.ok(hintRight.classList.contains('is-wrap-hint'));
 
       renderer.destroy();
     });
@@ -160,16 +168,19 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       dispatcher.dispatch('MOVE_DOWN');
       dispatcher.dispatch('MOVE_RIGHT');
 
-      assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Page 2/3');
+      assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
+      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.ok(cueEl.classList.contains('is-active'));
 
       // Enter Detour Mode
       dispatcher.dispatch('ENTER_DETOUR');
 
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'DETOUR');
       assert.strictEqual(hudContainer.getAttribute('data-active-z'), '1');
-      assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Detour 1/2');
-      assert.strictEqual(cueEl.textContent, '[h/l] Scrub · [o] Return · [j/k] Locked');
-      assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
+      assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 1/2');
+      assert.strictEqual(cueEl.textContent, '[o]');
+      assert.ok(cueEl.classList.contains('is-active'));
+      assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'false');
 
       // Vertical radar directions strictly locked/disabled in detour mode
       assert.ok(hintUp.classList.contains('is-disabled'));
@@ -187,7 +198,7 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       // Scrub forward to z = 2
       dispatcher.dispatch('MOVE_RIGHT');
 
-      assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Detour 2/2');
+      assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 2/2');
       assert.strictEqual(hudContainer.getAttribute('data-active-z'), '2');
       // At z = 2 (max), can scrub left but not right
       assert.ok(hintLeft.classList.contains('is-active'));
@@ -198,8 +209,9 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
 
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'MAIN');
       assert.strictEqual(hudContainer.getAttribute('data-active-z'), '0');
-      assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Page 2/3');
-      assert.strictEqual(cueEl.textContent, '[i] Detour (2)');
+      assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
+      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.ok(cueEl.classList.contains('is-active'));
 
       renderer.destroy();
     });
@@ -217,7 +229,38 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       dispatcher.dispatch('ENTER_DETOUR');
 
       const coordEl = hudContainer.querySelector('.hud-coordinates');
-      assert.strictEqual(coordEl.textContent, 'Detour 1/2');
+      assert.strictEqual(coordEl.textContent, 'Dep 1/2');
+
+      renderer.destroy();
+    });
+
+    it('allows entering and exiting detour via clicking detour cue button', () => {
+      const deckElement = createStandardMockDeckDOM();
+      const { topology } = loadDeckFromDOM(deckElement);
+      const dispatcher = createCommandDispatcher(topology);
+
+      const hudContainer = createMockElement('aside', { id: 'hud' });
+      const renderer = attachHudRenderer(dispatcher, hudContainer);
+
+      const cueEl = hudContainer.querySelector('.hud-detour-cue');
+
+      // At (0, 0, 0) clicking disabled [i] is a no-op
+      cueEl.dispatchEvent({ type: 'click' });
+      assert.strictEqual(hudContainer.getAttribute('data-mode'), 'MAIN');
+
+      // Navigate to (1, 1, 0) where detours exist
+      dispatcher.dispatch('MOVE_DOWN');
+      dispatcher.dispatch('MOVE_RIGHT');
+
+      // Click active [i] button
+      cueEl.dispatchEvent({ type: 'click' });
+      assert.strictEqual(hudContainer.getAttribute('data-mode'), 'DETOUR');
+      assert.strictEqual(cueEl.textContent, '[o]');
+
+      // Click active [o] button to return
+      cueEl.dispatchEvent({ type: 'click' });
+      assert.strictEqual(hudContainer.getAttribute('data-mode'), 'MAIN');
+      assert.strictEqual(cueEl.textContent, '[i]');
 
       renderer.destroy();
     });
@@ -297,13 +340,13 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       const renderer = attachHudRenderer(dispatcher, hudContainer);
 
       const coordEl = hudContainer.querySelector('.hud-coordinates');
-      assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 1/2');
+      assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
 
       renderer.destroy();
 
       // Dispatching after destroy should not update HUD
       dispatcher.dispatch('MOVE_RIGHT');
-      assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 1/2');
+      assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
 
       // Multiple destroy calls are idempotent
       assert.doesNotThrow(() => renderer.destroy());
@@ -325,7 +368,7 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
 
       const coordEl = hudContainer.querySelector('.hud-coordinates');
       dispatcher.dispatch('MOVE_RIGHT');
-      assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 1/2');
+      assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
     });
   });
 

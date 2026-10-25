@@ -108,11 +108,15 @@ Colors are decoupled from logic via CSS variables on `:root` or per
 ## 4. Minimal HUD Contract (v0.1)
 
 The `#hud` adapter subscribes to the Outbound State Payload and renders minimal,
-non-intrusive status indicators:
+fixed-dimension, non-intrusive status indicators:
 
-1. **Coordinate Readout:** Current position (e.g., `Sec 1/3 · Page 2/5` in
-   `MAIN`, or `Detour 1/4` in `DETOUR`).
-2. **Detour Availability Cue:** Visible when `hasDetour === true` in `MAIN_MODE`
-   (signals `[i] Detour (N)`).
-3. **Detour Active / Exit Cue:** Visible in `DETOUR_MODE` (signals
-   `[h/l] Scrub · [o] Return · [j/k] Locked`).
+1. **Coordinate Readout:** Current position in standard Vim statusline notation:
+   - `MAIN_MODE`: `Col {x + 1}/{totalX} · Row {y + 1}/{totalY}`
+   - `DETOUR_MODE`: `Col {x + 1}/{totalX} · Dep {z}/{detourCount}` (or `Dep {z}/{detourCount}` in compact mode)
+2. **Fixed Detour Button Slot:** Morphing button maintaining constant HUD dimensions:
+   - `MAIN_MODE`: Displays `[i]` (dimmed when no detour is available on current page, illuminated and clickable when detour exists).
+   - `DETOUR_MODE`: Displays `[o]` (illuminated and clickable, signaling exit/return).
+3. **Directional Radar & Section Wrap Indicators:**
+   - 4-way hints (`↑`, `↓`, `←`, `→`).
+   - Reflects continuous section wrapping: `↳` (next section wrap on right arrow) and `↰` (prev section wrap on left arrow).
+   - Reflects vertical lock pulse (`is-locked-pulse`) during locked vertical navigation attempts in detour mode.

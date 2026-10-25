@@ -5,13 +5,14 @@
  * Subscribes to the NavigationCommandPort dispatcher and renders minimal,
  * non-intrusive status indicators into the `#hud` container:
  * - Real-time coordinate readout (.hud-coordinates):
- *   - MAIN_MODE: `Sec ${y + 1}/${totalY} · Page ${x + 1}/${totalX}`
- *   - DETOUR_MODE: `Sec ${y + 1}/${totalY} · Detour ${z}/${detourCount}`
- * - Detour Availability and active scrub cues (.hud-detour-cue):
- *   - MAIN_MODE: `[i] Detour (${detourCount})` when detours exist, hidden otherwise
- *   - DETOUR_MODE: `[h/l] Scrub · [o] Return · [j/k] Locked`
+ *   - MAIN_MODE: `Col ${x + 1}/${totalX} · Row ${y + 1}/${totalY}`
+ *   - DETOUR_MODE: `Col ${x + 1}/${totalX} · Dep ${z}/${detourCount}`
+ * - Fixed Detour Key Button Slot (.hud-detour-cue):
+ *   - MAIN_MODE: `[i]` (dimmed when no detours, illuminated/active when detours exist)
+ *   - DETOUR_MODE: `[o]` (illuminated/active indicating exit/return)
  * - Directional Radar hints (.hud-radar):
  *   - Reflects navigation capabilities (canMoveUp, canMoveLeft, canMoveDown, canMoveRight)
+ *   - Reflects section wrap hints: `↳` for next row wrap, `↰` for prev row wrap
  * - Locked-axis transient pulse (.is-locked-pulse and data-locked-attempt="true"):
  *   - Triggers transient warning pulse when attempting vertical movement in DETOUR mode
  * - Accessible status container (role="status", aria-live="polite")
@@ -46,6 +47,9 @@ export const HUD_BASE_STYLES = `
   z-index: 1000;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  min-width: 270px;
+  box-sizing: border-box;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
@@ -77,23 +81,33 @@ export const HUD_BASE_STYLES = `
 .hud-coordinates {
   font-weight: 600;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .hud-detour-cue {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--hud-current-accent);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.3);
   font-size: 0.78rem;
-  font-weight: 500;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  font-weight: 600;
+  cursor: default;
+  transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
-.hud-detour-cue[data-visible="false"],
-.hud-detour-cue.is-hidden {
-  display: none !important;
+.hud-detour-cue.is-active {
+  color: var(--hud-current-accent);
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.hud-detour-cue.is-disabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .hud-radar {
@@ -117,16 +131,9 @@ export const HUD_BASE_STYLES = `
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.hud-hint.has-detour-lookahead::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: var(--hud-accent-detour);
-  box-shadow: 0 0 4px var(--hud-accent-detour);
+.hud-hint.is-wrap-hint {
+  font-weight: 700;
+  color: var(--hud-accent);
 }
 
 .hud-hint.is-active {
@@ -196,6 +203,7 @@ function createFallbackElement(tagName) {
   const classSet = new Set();
   const attrs = new Map();
   const children = [];
+  const listeners = {};
 
   function syncAttrFromClasses() {
     if (classSet.size === 0) {
@@ -221,6 +229,27 @@ function createFallbackElement(tagName) {
     parentNode: null,
     parentElement: null,
     dataset: {},
+
+    addEventListener(type, listener) {
+      if (!listeners[type]) listeners[type] = [];
+      listeners[type].push(listener);
+    },
+
+    removeEventListener(type, listener) {
+      if (!listeners[type]) return;
+      listeners[type] = listeners[type].filter((l) => l !== listener);
+    },
+
+    dispatchEvent(event) {
+      const type = typeof event === 'string' ? event : event?.type;
+      const list = listeners[type] ? [...listeners[type]] : [];
+      list.forEach((l) => l(event));
+      return true;
+    },
+
+    click() {
+      this.dispatchEvent({ type: 'click' });
+    },
 
     classList: {
       add(...tokens) {
@@ -450,6 +479,26 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
   // Retrieve or create sub-elements
   const coordinatesEl = getOrCreateChild(container, 'hud-coordinates', 'div', options);
   const detourCueEl = getOrCreateChild(container, 'hud-detour-cue', 'div', options);
+  if (detourCueEl && typeof detourCueEl.setAttribute === 'function') {
+    detourCueEl.setAttribute('role', 'button');
+    detourCueEl.setAttribute('tabindex', '0');
+  }
+
+  function handleDetourCueClick() {
+    const currentMode = container.getAttribute?.('data-mode') || MODE_MAIN;
+    if (currentMode === MODE_MAIN) {
+      if (detourCueEl.getAttribute?.('data-enabled') === 'true') {
+        dispatcher.dispatch?.('ENTER_DETOUR');
+      }
+    } else {
+      dispatcher.dispatch?.('EXIT_DETOUR');
+    }
+  }
+
+  if (typeof detourCueEl.addEventListener === 'function') {
+    detourCueEl.addEventListener('click', handleDetourCueClick);
+  }
+
   const radarEl = getOrCreateChild(container, 'hud-radar', 'div', options);
   if (radarEl && typeof radarEl.setAttribute === 'function') {
     radarEl.setAttribute('aria-label', 'Directional Radar');
@@ -545,67 +594,83 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
 
     // 2. Format coordinate readout
     if (mode === MODE_MAIN || z === 0) {
-      coordinatesEl.textContent = `Sec ${y + 1}/${totalY} · Page ${x + 1}/${totalX}`;
+      coordinatesEl.textContent = `Col ${x + 1}/${totalX} · Row ${y + 1}/${totalY}`;
     } else {
       if (options.compactDetour) {
-        coordinatesEl.textContent = `Detour ${z}/${detourCount}`;
+        coordinatesEl.textContent = `Dep ${z}/${detourCount}`;
       } else {
-        coordinatesEl.textContent = `Sec ${y + 1}/${totalY} · Detour ${z}/${detourCount}`;
+        coordinatesEl.textContent = `Col ${x + 1}/${totalX} · Dep ${z}/${detourCount}`;
       }
     }
 
-    // 3. Update Detour Availability & Mode Cues
+    // 3. Update Detour Availability & Mode Cues (Fixed slot with morphing [i]/[o])
+    detourCueEl.classList?.remove('is-hidden');
+    detourCueEl.classList?.add('is-visible');
+    detourCueEl.setAttribute?.('data-visible', 'true');
+
     if (mode === MODE_MAIN || z === 0) {
+      detourCueEl.textContent = '[i]';
+      detourCueEl.setAttribute?.('data-mode', 'MAIN');
       if (hasDetour) {
-        detourCueEl.textContent = `[i] Detour (${detourCount})`;
-        detourCueEl.classList?.add('is-visible');
-        detourCueEl.classList?.remove('is-hidden');
-        detourCueEl.setAttribute?.('data-visible', 'true');
-        detourCueEl.removeAttribute?.('aria-hidden');
+        detourCueEl.classList?.add('is-active');
+        detourCueEl.classList?.remove('is-disabled');
+        detourCueEl.setAttribute?.('data-enabled', 'true');
+        detourCueEl.setAttribute?.('aria-disabled', 'false');
+        detourCueEl.setAttribute?.('title', `Detour (${detourCount} slide${detourCount === 1 ? '' : 's'}) [i]`);
       } else {
-        detourCueEl.textContent = '';
-        detourCueEl.classList?.remove('is-visible');
-        detourCueEl.classList?.add('is-hidden');
-        detourCueEl.setAttribute?.('data-visible', 'false');
-        detourCueEl.setAttribute?.('aria-hidden', 'true');
+        detourCueEl.classList?.remove('is-active');
+        detourCueEl.classList?.add('is-disabled');
+        detourCueEl.setAttribute?.('data-enabled', 'false');
+        detourCueEl.setAttribute?.('aria-disabled', 'true');
+        detourCueEl.setAttribute?.('title', 'No detours on this slide');
       }
     } else {
       // In DETOUR_MODE
-      detourCueEl.textContent = '[h/l] Scrub · [o] Return · [j/k] Locked';
-      detourCueEl.classList?.add('is-visible');
-      detourCueEl.classList?.remove('is-hidden');
-      detourCueEl.setAttribute?.('data-visible', 'true');
-      detourCueEl.removeAttribute?.('aria-hidden');
+      detourCueEl.textContent = '[o]';
+      detourCueEl.setAttribute?.('data-mode', 'DETOUR');
+      detourCueEl.classList?.add('is-active');
+      detourCueEl.classList?.remove('is-disabled');
+      detourCueEl.setAttribute?.('data-enabled', 'true');
+      detourCueEl.setAttribute?.('aria-disabled', 'false');
+      detourCueEl.setAttribute?.('title', 'Return from Detour [o]');
     }
 
-    // 4. Directional Radar Hints & 3D Compass
+    // 4. Directional Radar Hints & Wrapping Cues
     const canMoveLeft = Boolean(event.canMoveLeft);
     const canMoveRight = Boolean(event.canMoveRight);
     const canMoveUp = Boolean(event.canMoveUp);
     const canMoveDown = Boolean(event.canMoveDown);
-    const hasDetourLeft = Boolean(event.hasDetourLeft);
-    const hasDetourRight = Boolean(event.hasDetourRight);
+    const willWrapNextSection = Boolean(event.willWrapNextSection);
+    const willWrapPrevSection = Boolean(event.willWrapPrevSection);
 
     updateHintElement(hintUp, canMoveUp);
-    updateHintElement(hintLeft, canMoveLeft);
     updateHintElement(hintDown, canMoveDown);
+    updateHintElement(hintLeft, canMoveLeft);
     updateHintElement(hintRight, canMoveRight);
 
-    // Look-ahead detour indicators on horizontal hints
-    if (hasDetourLeft) {
-      hintLeft.classList?.add('has-detour-lookahead');
-      hintLeft.setAttribute?.('data-has-detour-adjacent', 'true');
-    } else {
-      hintLeft.classList?.remove('has-detour-lookahead');
-      hintLeft.removeAttribute?.('data-has-detour-adjacent');
+    // Section wrapping cues on radar arrows
+    if (hintLeft) {
+      if (willWrapPrevSection) {
+        hintLeft.textContent = '↰';
+        hintLeft.setAttribute?.('title', 'Prev Row (h)');
+        hintLeft.classList?.add('is-wrap-hint');
+      } else {
+        hintLeft.textContent = '←';
+        hintLeft.setAttribute?.('title', 'Left (h)');
+        hintLeft.classList?.remove('is-wrap-hint');
+      }
     }
 
-    if (hasDetourRight) {
-      hintRight.classList?.add('has-detour-lookahead');
-      hintRight.setAttribute?.('data-has-detour-adjacent', 'true');
-    } else {
-      hintRight.classList?.remove('has-detour-lookahead');
-      hintRight.removeAttribute?.('data-has-detour-adjacent');
+    if (hintRight) {
+      if (willWrapNextSection) {
+        hintRight.textContent = '↳';
+        hintRight.setAttribute?.('title', 'Next Row (l)');
+        hintRight.classList?.add('is-wrap-hint');
+      } else {
+        hintRight.textContent = '→';
+        hintRight.setAttribute?.('title', 'Right (l)');
+        hintRight.classList?.remove('is-wrap-hint');
+      }
     }
 
     // Depth cue in compass (z-axis transition)
@@ -625,8 +690,8 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
     radarEl.setAttribute?.('data-can-move-right', String(canMoveRight));
     radarEl.setAttribute?.('data-can-move-up', String(canMoveUp));
     radarEl.setAttribute?.('data-can-move-down', String(canMoveDown));
-    radarEl.setAttribute?.('data-has-detour-left', String(hasDetourLeft));
-    radarEl.setAttribute?.('data-has-detour-right', String(hasDetourRight));
+    radarEl.setAttribute?.('data-will-wrap-left', String(willWrapPrevSection));
+    radarEl.setAttribute?.('data-will-wrap-right', String(willWrapNextSection));
 
     // 5. Locked-axis Warning / Pulse
     const isLockedAttempt = Boolean(event.feedback?.verticalLockedAttempt || event.verticalLockedAttempt);
@@ -650,6 +715,9 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
    */
   const destroy = function destroy() {
     clearLockedPulse();
+    if (typeof detourCueEl?.removeEventListener === 'function') {
+      detourCueEl.removeEventListener('click', handleDetourCueClick);
+    }
     if (unsubscribe) {
       unsubscribe();
       unsubscribe = null;

@@ -142,10 +142,11 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
 
     // HUD initial readout
     const coordEl = hudEl.querySelector('.hud-coordinates');
-    assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 1/2');
+    assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
 
     const detourCueEl = hudEl.querySelector('.hud-detour-cue');
-    assert.strictEqual(detourCueEl.getAttribute('data-visible'), 'false');
+    assert.strictEqual(detourCueEl.textContent, '[i]');
+    assert.ok(detourCueEl.classList.contains('is-disabled'));
 
     // ------------------------------------------------------------------------
     // Step 1: Navigate Right with 'l' -> (0, 1, 0)
@@ -157,7 +158,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
 
     const slide010 = slideMap.getSlide(0, 1, 0);
     assert.ok(slide010.classList.contains('is-active'));
-    assert.strictEqual(coordEl.textContent, 'Sec 1/3 · Page 2/2');
+    assert.strictEqual(coordEl.textContent, 'Col 2/2 · Row 1/3');
 
     // Continuous section wrap: pressing 'l' at max X wraps to section 1, page 0
     pressKey(mockWin, 'l');
@@ -170,7 +171,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
 
     const slide100 = slideMap.getSlide(1, 0, 0);
     assert.ok(slide100.classList.contains('is-active'));
-    assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Page 1/3');
+    assert.strictEqual(coordEl.textContent, 'Col 1/3 · Row 2/3');
 
     // ------------------------------------------------------------------------
     // Step 2: Navigate Right to page with Detours -> (1, 1, 0)
@@ -181,11 +182,11 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     const slide110 = slideMap.getSlide(1, 1, 0);
     assert.ok(slide110.classList.contains('is-active'));
     assert.ok(slide110.classList.contains('has-detour'));
-    assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Page 2/3');
+    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
 
-    // Detour Cue should now be visible and announce 2 detours
-    assert.strictEqual(detourCueEl.getAttribute('data-visible'), 'true');
-    assert.strictEqual(detourCueEl.textContent, '[i] Detour (2)');
+    // Detour Cue should now show active [i]
+    assert.strictEqual(detourCueEl.textContent, '[i]');
+    assert.ok(detourCueEl.classList.contains('is-active'));
 
     // ------------------------------------------------------------------------
     // Step 4: Enter Detour with 'i' -> (1, 1, 1) in DETOUR mode
@@ -201,9 +202,10 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     const detourSlide1 = slideMap.getSlide(1, 1, 1);
     assert.ok(detourSlide1.classList.contains('is-active'));
 
-    // HUD shows detour coordinate format and detour navigation controls
-    assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Detour 1/2');
-    assert.strictEqual(detourCueEl.textContent, '[h/l] Scrub · [o] Return · [j/k] Locked');
+    // HUD shows detour coordinate format and morphing [o] return cue
+    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 1/2');
+    assert.strictEqual(detourCueEl.textContent, '[o]');
+    assert.ok(detourCueEl.classList.contains('is-active'));
 
     // ------------------------------------------------------------------------
     // Step 5: Scrub Detour Sequence Right with 'l' -> (1, 1, 2)
@@ -214,7 +216,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     const detourSlide2 = slideMap.getSlide(1, 1, 2);
     assert.ok(detourSlide2.classList.contains('is-active'));
     assert.strictEqual(detourSlide1.classList.contains('is-active'), false);
-    assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Detour 2/2');
+    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 2/2');
 
     // ------------------------------------------------------------------------
     // Step 6: Attempt Vertical Navigation in DETOUR mode -> Strictly Locked
@@ -257,7 +259,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.strictEqual(hudEl.getAttribute('data-mode'), 'MAIN');
     assert.ok(slide110.classList.contains('is-active'));
     assert.strictEqual(detourSlide1.classList.contains('is-active'), false);
-    assert.strictEqual(coordEl.textContent, 'Sec 2/3 · Page 2/3');
+    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
 
     // ------------------------------------------------------------------------
     // Step 9: Jump Commands '0' and '$'
@@ -409,9 +411,12 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     pressKey(mockWin, 'j'); // Move down to section 1, page 0: (1, 0, 0)
     assert.strictEqual(mockWin.location.hash, '#1/0');
 
-    // Look-ahead indicator on HUD compass for page (1, 0, 0): adjacent right page has detours!
+    // Detour cue is dimmed [i] at (1, 0, 0) and look-ahead dots are removed from HUD compass
+    const detourCue = hudEl.querySelector('.hud-detour-cue');
+    assert.strictEqual(detourCue.textContent, '[i]');
+    assert.ok(detourCue.classList.contains('is-disabled'));
     const hintRight = hudEl.querySelector('.hud-hint-right');
-    assert.ok(hintRight.classList.contains('has-detour-lookahead'));
+    assert.strictEqual(hintRight.classList.contains('has-detour-lookahead'), false);
 
     // Move to (1, 1, 0) and enter detour
     pressKey(mockWin, 'l');
