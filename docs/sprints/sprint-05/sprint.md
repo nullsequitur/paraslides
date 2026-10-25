@@ -17,7 +17,7 @@ Implement the recommendations from the end-to-end QA session (`docs/qa/qa-sessio
 
 ## 3. Ticket Index
 - [x] **[ticket-01-core-vim-navigation.md](./ticket-01-core-vim-navigation.md)**: [T05-01] Core sticky column (`desiredX`), continuous section wrap, and `NEXT_SLIDE` command (`src/core/`).
-- [ ] **[ticket-02-keyboard-counts.md](./ticket-02-keyboard-counts.md)**: [T05-02] Keyboard count buffer, `gg`/`G` row jumping, and `Space`/`Enter` linear flow (`src/adapters/input/vim-keys.js`).
+- [x] **[ticket-02-keyboard-counts.md](./ticket-02-keyboard-counts.md)**: [T05-02] Keyboard count buffer, `gg`/`G` row jumping, and `Space`/`Enter` linear flow (`src/adapters/input/vim-keys.js`).
 - [ ] **[ticket-03-viewport-animations.md](./ticket-03-viewport-animations.md)**: [T05-03] Viewport mild 3D depth shift, horizontal detour slide scrubbing, and blob removal (`src/adapters/render/viewport.js`).
 - [ ] **[ticket-04-hud-overhaul.md](./ticket-04-hud-overhaul.md)**: [T05-04] HUD fixed dimensions, `Col/Row/Dep` coordinates, morphing `[i]`/`[o]` slot, and wrapping radar cues (`src/adapters/render/hud.js`).
 - [ ] **[ticket-05-overview-menu.md](./ticket-05-overview-menu.md)**: [T05-05] Overview menu dedicated key `m`, strict Vim navigation, and `Enter`/`Space` selection (`src/adapters/render/map-mode.js`).

@@ -20,7 +20,11 @@ import {
   COMMAND_EXIT_DETOUR,
   COMMAND_JUMP_START,
   COMMAND_JUMP_END,
-  COMMAND_TOGGLE_MAP
+  COMMAND_TOGGLE_MAP,
+  COMMAND_NEXT_SLIDE,
+  COMMAND_JUMP_TOP_ROW,
+  COMMAND_JUMP_BOTTOM_ROW,
+  COMMAND_JUMP_ROW
 } from '../../src/core/navigator.js';
 
 import { createCommandDispatcher } from '../../src/ports/input.js';
@@ -112,7 +116,9 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
       assert.strictEqual(KEY_BINDINGS['0'], COMMAND_JUMP_START);
       assert.strictEqual(KEY_BINDINGS.$, COMMAND_JUMP_END);
       assert.strictEqual(KEY_BINDINGS.m, COMMAND_TOGGLE_MAP);
-      assert.strictEqual(KEY_BINDINGS[' '], COMMAND_TOGGLE_MAP);
+      assert.strictEqual(KEY_BINDINGS[' '], COMMAND_NEXT_SLIDE);
+      assert.strictEqual(KEY_BINDINGS.Enter, COMMAND_NEXT_SLIDE);
+      assert.strictEqual(KEY_BINDINGS.G, COMMAND_JUMP_BOTTOM_ROW);
     });
   });
 
@@ -204,7 +210,7 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
 
       const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
 
-      for (const unmappedKey of ['a', 'b', '1', 'Enter', 'Tab', 'Backspace', 'F5']) {
+      for (const unmappedKey of ['a', 'b', 'c', 'Tab', 'Backspace', 'F5']) {
         const event = createKeyEvent(unmappedKey);
         mockTarget.dispatchEvent(event);
         assert.strictEqual(event.defaultPrevented, false);
@@ -568,6 +574,192 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
       mockWindow.dispatchEvent(createKeyEvent('Escape'));
       assert.strictEqual(dispatcher.getState().mode, 'MAIN');
       assert.strictEqual(dispatcher.getState().z, 0);
+
+      handle.detach();
+    });
+  });
+
+  describe('Vim Multipliers, gg/G Row Jumps & Linear Flow', () => {
+    it('supports numeric count multipliers (e.g. 3l, 2j)', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => {
+          dispatched.push(cmd);
+          return { ok: true };
+        }
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      // Press '3' then 'l' -> dispatches COMMAND_MOVE_RIGHT 3 times
+      mockTarget.dispatchEvent(createKeyEvent('3'));
+      mockTarget.dispatchEvent(createKeyEvent('l'));
+
+      assert.strictEqual(dispatched.length, 3);
+      assert.deepStrictEqual(dispatched, [COMMAND_MOVE_RIGHT, COMMAND_MOVE_RIGHT, COMMAND_MOVE_RIGHT]);
+
+      dispatched.length = 0;
+
+      // Press '2' then 'j' -> dispatches COMMAND_MOVE_DOWN 2 times
+      mockTarget.dispatchEvent(createKeyEvent('2'));
+      mockTarget.dispatchEvent(createKeyEvent('j'));
+
+      assert.strictEqual(dispatched.length, 2);
+      assert.deepStrictEqual(dispatched, [COMMAND_MOVE_DOWN, COMMAND_MOVE_DOWN]);
+
+      handle.detach();
+    });
+
+    it('distinguishes standalone 0 from 0 in count buffer (e.g. 10l)', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => {
+          dispatched.push(cmd);
+          return { ok: true };
+        }
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      // Standalone '0' -> COMMAND_JUMP_START
+      mockTarget.dispatchEvent(createKeyEvent('0'));
+      assert.strictEqual(dispatched.length, 1);
+      assert.strictEqual(dispatched[0], COMMAND_JUMP_START);
+
+      dispatched.length = 0;
+
+      // '1' then '0' then 'h' -> 10 times COMMAND_MOVE_LEFT
+      mockTarget.dispatchEvent(createKeyEvent('1'));
+      mockTarget.dispatchEvent(createKeyEvent('0'));
+      mockTarget.dispatchEvent(createKeyEvent('h'));
+
+      assert.strictEqual(dispatched.length, 10);
+      assert.strictEqual(dispatched.every((c) => c === COMMAND_MOVE_LEFT), true);
+
+      handle.detach();
+    });
+
+    it('Escape cancels active count buffer without dispatching EXIT_DETOUR', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => dispatched.push(cmd)
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      // Type '5' into count buffer
+      const event5 = createKeyEvent('5');
+      mockTarget.dispatchEvent(event5);
+      assert.strictEqual(dispatched.length, 0);
+
+      // Press 'Escape' -> cancels buffer
+      const eventEsc = createKeyEvent('Escape');
+      mockTarget.dispatchEvent(eventEsc);
+      assert.strictEqual(eventEsc.defaultPrevented, true);
+      assert.strictEqual(dispatched.length, 0); // Did not dispatch EXIT_DETOUR!
+
+      // Next keypress 'l' executes with count = 1
+      mockTarget.dispatchEvent(createKeyEvent('l'));
+      assert.strictEqual(dispatched.length, 1);
+      assert.strictEqual(dispatched[0], COMMAND_MOVE_RIGHT);
+
+      handle.detach();
+    });
+
+    it('handles gg for JUMP_TOP_ROW and [count]gg for JUMP_ROW', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => {
+          dispatched.push(cmd);
+          return { ok: true };
+        }
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      // 'g' then 'g' -> COMMAND_JUMP_TOP_ROW
+      mockTarget.dispatchEvent(createKeyEvent('g'));
+      assert.strictEqual(dispatched.length, 0);
+      mockTarget.dispatchEvent(createKeyEvent('g'));
+      assert.strictEqual(dispatched.length, 1);
+      assert.strictEqual(dispatched[0], COMMAND_JUMP_TOP_ROW);
+
+      dispatched.length = 0;
+
+      // '5' then 'g' then 'g' -> JUMP_ROW to targetY: 4
+      mockTarget.dispatchEvent(createKeyEvent('5'));
+      mockTarget.dispatchEvent(createKeyEvent('g'));
+      mockTarget.dispatchEvent(createKeyEvent('g'));
+      assert.strictEqual(dispatched.length, 1);
+      assert.deepStrictEqual(dispatched[0], { type: COMMAND_JUMP_ROW, targetY: 4 });
+
+      handle.detach();
+    });
+
+    it('handles G for JUMP_BOTTOM_ROW and [count]G for JUMP_ROW', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => {
+          dispatched.push(cmd);
+          return { ok: true };
+        }
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      // 'G' (with shiftKey: true) -> COMMAND_JUMP_BOTTOM_ROW
+      mockTarget.dispatchEvent(createKeyEvent('G', { shiftKey: true }));
+      assert.strictEqual(dispatched.length, 1);
+      assert.strictEqual(dispatched[0], COMMAND_JUMP_BOTTOM_ROW);
+
+      dispatched.length = 0;
+
+      // '3' then 'G' -> JUMP_ROW to targetY: 2
+      mockTarget.dispatchEvent(createKeyEvent('3'));
+      mockTarget.dispatchEvent(createKeyEvent('G', { shiftKey: true }));
+      assert.strictEqual(dispatched.length, 1);
+      assert.deepStrictEqual(dispatched[0], { type: COMMAND_JUMP_ROW, targetY: 2 });
+
+      handle.detach();
+    });
+
+    it('maps Space and Enter to COMMAND_NEXT_SLIDE', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => dispatched.push(cmd)
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      mockTarget.dispatchEvent(createKeyEvent(' '));
+      assert.strictEqual(dispatched.length, 1);
+      assert.strictEqual(dispatched[0], COMMAND_NEXT_SLIDE);
+
+      mockTarget.dispatchEvent(createKeyEvent('Enter'));
+      assert.strictEqual(dispatched.length, 2);
+      assert.strictEqual(dispatched[1], COMMAND_NEXT_SLIDE);
+
+      handle.detach();
+    });
+
+    it('maps m to COMMAND_TOGGLE_MAP', () => {
+      const mockTarget = createMockEventTarget();
+      const dispatched = [];
+      const mockDispatcher = {
+        dispatch: (cmd) => dispatched.push(cmd)
+      };
+
+      const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
+
+      mockTarget.dispatchEvent(createKeyEvent('m'));
+      assert.strictEqual(dispatched.length, 1);
+      assert.strictEqual(dispatched[0], COMMAND_TOGGLE_MAP);
 
       handle.detach();
     });
