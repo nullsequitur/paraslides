@@ -88,6 +88,25 @@ exporting from) the core paraslides HTML schema.
 
 ---
 
+## Phase 4 / Epic 06: Presenter Tools & Declarative Configuration (v0.4)
+
+**Goal:** Deliver live stage presentation tools with zero external runtime dependencies and provide declarative presentation authoring.
+
+### Deliverables
+
+1. **Declarative Presentation Configuration (`src/core/config.js`, `src/adapters/parsers/config-loader.js`):**
+   - Centralized schema and validator supporting declarative JSON script tags (`<script type="application/json" id="paraslides-config">`), HTML dataset attributes, and normalized domain options.
+2. **Presenter Commands & Vim Keybindings (`src/core/navigator.js`, `src/adapters/input/vim-keys.js`):**
+   - Core abstract commands (`COMMAND_TOGGLE_LASER`, `COMMAND_TOGGLE_TELESTRATOR`, `COMMAND_CLEAR_TELESTRATOR`) and Vim keyboard mappings (<kbd>p</kbd>, <kbd>t</kbd>, <kbd>c</kbd>).
+3. **Fullscreen Cursor Auto-Hide (`src/adapters/render/cursor-auto-hide.js`):**
+   - Inactivity timer debouncing (`cursor: none !important`) that automatically unhides on pointer movements or keystrokes.
+4. **Glowing Laser Spotlight (`src/adapters/render/laser-pointer.js`):**
+   - 60fps GPU-accelerated glowing spotlight overlay with presentation hue synchronization.
+5. **Ephemeral Fading Telestrator (`src/adapters/render/telestrator.js`):**
+   - Hardware-accelerated Canvas overlay with quadratic bezier curve stroke smoothing and smooth timestamp-based opacity decay (`requestAnimationFrame`).
+
+---
+
 ## Out of Scope (Anti-Goals)
 
 - **No Heavy Runtime Frameworks:** Avoid React, Vue, or mandatory Node server

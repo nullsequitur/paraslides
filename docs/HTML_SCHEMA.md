@@ -127,3 +127,61 @@ fixed-dimension, non-intrusive status indicators:
    - Reflects slide context: normal presenting (`var(--accent-main)`), detour available (`var(--accent-detour)` pulse), in-detour (`var(--accent-detour)`), and end-of-section (`var(--orb-color-section-end)` pulse).
    - Position dynamically offsets above `#hud` when `#hud` is visible to prevent overlap, and nests at the bottom-right corner when `#hud` is hidden.
    - Toggled via `B` (`COMMAND_TOGGLE_ORB`).
+
+---
+
+## 5. Presenter Tools Contract & Declarative Configuration (Epic 06)
+
+### A. Fullscreen Cursor Auto-Hide
+- **Target Attributes:** `.is-cursor-hidden` and `data-cursor-hidden="true"` applied to `document.body` or presentation root after `cursorAutoHide.delayMs` of user inactivity.
+- **CSS Contract:** Suppresses mouse cursor via `cursor: none !important`. Movement instantly restores cursor visibility.
+
+### B. Glowing Laser Spotlight Adapter
+- **Element:** `<aside id="laser-spotlight" class="paraslides-laser-spotlight" aria-hidden="true"></aside>`
+- **State Attributes:** `.is-active`, `data-active="true"`, `data-mode="MAIN"|"DETOUR"`.
+- **CSS Custom Properties:**
+  ```css
+  --laser-color: var(--accent-main, #ff3344);
+  --laser-size: 16px;
+  --laser-glow: 14px;
+  ```
+- **Interaction:** Toggled via <kbd>p</kbd> (`COMMAND_TOGGLE_LASER`). Tracks pointer movements using hardware-accelerated `translate3d(x, y, 0)`.
+
+### C. Ephemeral Fading Telestrator
+- **Element:** `<canvas id="telestrator-canvas" class="paraslides-telestrator-canvas" aria-hidden="true"></canvas>`
+- **State Attributes:** `.is-active`, `data-active="true"`, `data-mode="MAIN"|"DETOUR"`.
+- **CSS Custom Properties:**
+  ```css
+  --telestrator-color: var(--accent-main, #5c9eff);
+  --telestrator-stroke-width: 3.5px;
+  ```
+- **Interaction:** Toggled via <kbd>t</kbd> (`COMMAND_TOGGLE_TELESTRATOR`) and cleared via <kbd>c</kbd> (`COMMAND_CLEAR_TELESTRATOR`). Renders quadratic bezier strokes that smoothly fade away over `fadeDurationMs` via `requestAnimationFrame`.
+
+### D. Declarative Configuration Block
+Presentation authors can customize presenter tools and navigation parameters without writing JavaScript by declaring JSON inside the document:
+
+```html
+<script type="application/json" id="paraslides-config">
+{
+  "cursorAutoHide": {
+    "enabled": true,
+    "delayMs": 2500,
+    "fullscreenOnly": false
+  },
+  "laserPointer": {
+    "enabled": true,
+    "size": 18,
+    "glowSpread": 14
+  },
+  "telestrator": {
+    "enabled": true,
+    "fadeDurationMs": 3000,
+    "strokeWidth": 3.5
+  },
+  "navigation": {
+    "continuousWrap": true,
+    "countTimeoutMs": 1500
+  }
+}
+</script>
+```

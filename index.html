@@ -986,6 +986,18 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
                   <td>Toggle visibility of Presenter Status Orb in any mode.</td>
                 </tr>
                 <tr>
+                  <td><kbd>p</kbd></td>
+                  <td>Toggle glowing laser spotlight presenter tool.</td>
+                </tr>
+                <tr>
+                  <td><kbd>t</kbd></td>
+                  <td>Toggle ephemeral fading telestrator drawing tool.</td>
+                </tr>
+                <tr>
+                  <td><kbd>c</kbd></td>
+                  <td>Clear all telestrator drawings immediately.</td>
+                </tr>
+                <tr>
                   <td><kbd>m</kbd></td>
                   <td>Toggle 2D Overview Map overlay.</td>
                 </tr>
@@ -1062,7 +1074,41 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
         </article>
       </div>
 
-      <!-- Page 3.1: Extensibility & Conclusion -->
+      <!-- Page 3.1: Live Presenter Tools -->
+      <div class="deck-page" data-page-title="Presenter Tools">
+        <article class="slide slide-main" data-slide-title="Live Presentation Tools">
+          <div class="slide-content">
+            <span class="tagline">Live Delivery</span>
+            <h2>Presenter Tools & Stage Mastery</h2>
+            <p class="lead">
+              Take complete command of the live presentation stage with integrated zero-dependency tools:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Glowing Laser Spotlight</h3>
+                <p>Press <kbd>p</kbd> to activate the glowing laser spotlight. Smooth 60fps tracking following your pointer with presentation hue synchronization.</p>
+              </div>
+              <div class="card">
+                <h3>Ephemeral Fading Telestrator</h3>
+                <p>Press <kbd>t</kbd> to enter drawing mode. Freehand annotations with quadratic bezier smoothing that automatically fade away, or clear immediately with <kbd>c</kbd>.</p>
+              </div>
+              <div class="card">
+                <h3>Cursor Auto-Hide</h3>
+                <p>Mouse cursor automatically fades after 2.5s of inactivity to keep slides pristine and distraction-free, reappearing on any movement.</p>
+              </div>
+              <div class="card">
+                <h3>Declarative Configuration</h3>
+                <p>Customize timeouts, colors, and features directly via <code>&lt;script type="application/json" id="paraslides-config"&gt;</code> without editing JavaScript.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Try pressing <kbd>p</kbd> right now for the laser pointer, or press <kbd>t</kbd> to draw on this slide!</p>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 3.2: Extensibility & Conclusion -->
       <div class="deck-page" data-page-title="Conclusion">
         <article class="slide slide-main" data-slide-title="Ready to Present">
           <div class="slide-content">
@@ -1095,10 +1141,34 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
   <aside id="hud" aria-live="polite"></aside>
 
   <!-- ========================================================================
+       Declarative Presentation Configuration (Conforming to docs/HTML_SCHEMA.md)
+       ======================================================================== -->
+  <script type="application/json" id="paraslides-config">
+    {
+      "cursorAutoHide": {
+        "enabled": true,
+        "delayMs": 2500,
+        "fullscreenOnly": false
+      },
+      "laserPointer": {
+        "enabled": true,
+        "size": 18,
+        "glowSpread": 14
+      },
+      "telestrator": {
+        "enabled": true,
+        "fadeDurationMs": 3000,
+        "strokeWidth": 3.5
+      }
+    }
+  </script>
+
+  <!-- ========================================================================
        Standard ES Module Presentation Initialization
        ======================================================================== -->
   <script type="module">
     import { loadDeckFromDOM } from './src/adapters/parsers/dom-loader.js';
+    import { loadConfigFromDOM } from './src/adapters/parsers/config-loader.js';
     import { createCommandDispatcher } from './src/ports/input.js';
     import { attachViewportRenderer } from './src/adapters/render/viewport.js';
     import { attachHudRenderer } from './src/adapters/render/hud.js';
@@ -1109,16 +1179,23 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
     import { attachFullscreenAdapter } from './src/adapters/render/fullscreen.js';
     import { attachVimExtensionAdvisory } from './src/adapters/input/vim-extension-advisory.js';
     import { attachPresenterOrb, injectPresenterOrbStyles } from './src/adapters/render/presenter-orb.js';
+    import { attachCursorAutoHide, injectCursorAutoHideStyles } from './src/adapters/render/cursor-auto-hide.js';
+    import { attachLaserPointer, injectLaserPointerStyles } from './src/adapters/render/laser-pointer.js';
+    import { attachTelestrator, injectTelestratorStyles } from './src/adapters/render/telestrator.js';
 
     const deckEl = document.getElementById('deck');
     const hudEl = document.getElementById('hud');
 
+    const config = loadConfigFromDOM(deckEl);
     const { topology, slideMap } = loadDeckFromDOM(deckEl);
     const dispatcher = createCommandDispatcher(topology);
 
     injectMapStyles();
     injectPrintStyles();
     injectPresenterOrbStyles();
+    injectCursorAutoHideStyles();
+    injectLaserPointerStyles();
+    injectTelestratorStyles();
 
     attachViewportRenderer(dispatcher, deckEl, { slideMap });
     attachHudRenderer(dispatcher, hudEl);
@@ -1129,6 +1206,16 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
     attachFullscreenAdapter(dispatcher, document.documentElement);
     attachVimExtensionAdvisory(document.body);
     attachPresenterOrb(dispatcher, document.body);
+
+    if (config.cursorAutoHide?.enabled) {
+      attachCursorAutoHide(document.body, config.cursorAutoHide);
+    }
+    if (config.laserPointer?.enabled) {
+      attachLaserPointer(dispatcher, document.body, config.laserPointer);
+    }
+    if (config.telestrator?.enabled) {
+      attachTelestrator(dispatcher, document.body, config.telestrator);
+    }
   </script>
 
 </body>

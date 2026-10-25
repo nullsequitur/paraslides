@@ -171,6 +171,25 @@ describe('Standalone index.html Presentation & Interactive Tutorial', () => {
     assert.strictEqual(htmlContent.includes('has-detour-lookahead'), false);
   });
 
+  it('loads declarative config and wires presenter tools from index.html', () => {
+    assert.ok(htmlContent.includes('id="paraslides-config"'));
+    assert.ok(htmlContent.includes('"cursorAutoHide"'));
+    assert.ok(htmlContent.includes('"laserPointer"'));
+    assert.ok(htmlContent.includes('"telestrator"'));
+
+    const configMatch = htmlContent.match(/<script type="application\/json" id="paraslides-config">([\s\S]*?)<\/script>/);
+    assert.ok(configMatch);
+    const parsed = JSON.parse(configMatch[1].trim());
+    assert.strictEqual(parsed.cursorAutoHide.enabled, true);
+    assert.strictEqual(parsed.laserPointer.enabled, true);
+    assert.strictEqual(parsed.telestrator.enabled, true);
+
+    // Verify key table documentation in index.html
+    assert.ok(htmlContent.includes('<kbd>p</kbd>'));
+    assert.ok(htmlContent.includes('<kbd>t</kbd>'));
+    assert.ok(htmlContent.includes('<kbd>c</kbd>'));
+  });
+
   it('runs full presentation lifecycle with Vim navigation, linear flow, detours, and overview menu', () => {
     const deckEl = parseIndexHtmlToDeck(htmlContent);
     const hudEl = createMockElement('aside', { id: 'hud' });

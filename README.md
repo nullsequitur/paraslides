@@ -15,6 +15,10 @@
 - **3D Spatial Radar & Lookahead HUD:** Compass indicators warn presenters when adjacent slides contain hidden detour stacks.
 - **Ambient Presenter Status Orb (<kbd>B</kbd>):** A subtle, pulsating corner beacon indicating standard, detour, and section-end states with non-overlapping horizontal docking.
 - **Distraction-Free Fullscreen (<kbd>f</kbd>) & Navigation Bar Toggle (<kbd>b</kbd>):** Seamless immersion with independent HUD bar and orb visibility toggles.
+- **Fullscreen Cursor Auto-Hide:** Automatically vanishes the mouse cursor after an inactivity threshold during presentations, reappearing instantly on movement.
+- **Glowing Laser Spotlight (<kbd>p</kbd>):** Hardware-accelerated laser spotlight dot following pointer movement with theme hue synchronization.
+- **Ephemeral Fading Telestrator (<kbd>t</kbd> / <kbd>c</kbd>):** Smooth quadratic bezier canvas annotations that automatically fade away over time, or clear immediately on command.
+- **Declarative Presentation Config:** Configure all presenter tools, decay timeouts, and key options via `<script type="application/json" id="paraslides-config">` or dataset attributes without writing JavaScript.
 - **Vim Browser Extension Shield:** Built-in heuristic detector and non-intrusive advisory for Vimium, Vimium C, and Surfingkeys users.
 - **Bidirectional URL Hash Routing:** Instant bookmarking and refresh preservation (`#y/x/z`).
 - **2D Overview Map Mode (<kbd>m</kbd> / <kbd>Space</kbd>):** Bird's-eye matrix view with visual detour indicator stacks and click-to-jump navigation.
@@ -59,6 +63,9 @@ paraslides treats your slide deck like an open document in Vim: **Sections are R
 | **`f`** | — | **Toggle Fullscreen** (native distraction-free display) | **Toggle Fullscreen** (native distraction-free display) |
 | **`b`** | — | **Toggle Navigation Bar** (hide/show HUD in any mode) | **Toggle Navigation Bar** (hide/show HUD in any mode) |
 | **`B`** | `Shift + b` | **Toggle Presenter Status Orb** (ambient beacon in any mode) | **Toggle Presenter Status Orb** (ambient beacon in any mode) |
+| **`p`** | — | **Toggle Laser Spotlight** (glowing pointer dot) | **Toggle Laser Spotlight** (glowing pointer dot) |
+| **`t`** | — | **Toggle Telestrator Pen** (ephemeral drawing overlay) | **Toggle Telestrator Pen** (ephemeral drawing overlay) |
+| **`c`** | — | **Clear Telestrator Drawings** (immediate canvas flush) | **Clear Telestrator Drawings** (immediate canvas flush) |
 | **`0`** | — | Jump to row start (`x = 0`, resets sticky column) | Jump to detour start (`z = 1`) |
 | **`$`** | `Shift + 4` | Jump to row end (`x = X_max`, sticky end-of-row) | Jump to detour end (`z = Z_max`) |
 | **`gg`** / **`G`** | — | Jump to top row (`y = 0`) / bottom row (`y = Y_max`) | **Locked** (emits warning pulse) |
@@ -89,6 +96,44 @@ If you use Vim browser extensions (such as Vimium, Vimium C, Surfingkeys, or Tri
 - **Capture Priority:** paraslides attaches keydown listeners in the DOM capture phase with `stopPropagation()` to prioritize presentation commands.
 - **Automatic Advisory:** An advisory banner alerts users when extension signatures are detected.
 - **Recommended Practice:** Enter insert / passthrough mode (e.g. press <kbd>i</kbd> in Vimium) or add a URL exclusion rule for your presentation origin.
+
+### Presenter Tools (<kbd>p</kbd>, <kbd>t</kbd>, <kbd>c</kbd>)
+Live presentation delivery tools operating with zero external runtime dependencies:
+- **Glowing Laser Spotlight (<kbd>p</kbd>):**
+  - Renders a glowing dot overlay (`#laser-spotlight`) tracking your mouse cursor at 60fps with GPU `translate3d` transforms.
+  - Automatically synchronizes with presentation themes: glows with `--accent-main` in the Main track and switches to `--accent-detour` when deep diving inside detours.
+- **Ephemeral Fading Telestrator (<kbd>t</kbd> to toggle, <kbd>c</kbd> to clear):**
+  - Full-screen `<canvas>` overlay enabling live ink annotations across your slides.
+  - Uses quadratic bezier smoothing between points for natural, fluid penmanship.
+  - Ephemeral decay loop: drawn strokes gracefully fade away over a configurable decay timeout (default 3s), freeing canvas memory automatically.
+  - Immediate flush: press <kbd>c</kbd> to clear all active annotations instantly.
+- **Fullscreen Cursor Auto-Hide:**
+  - Hides the mouse cursor automatically after 2.5s of inactivity, restoring it instantly on any mouse movement or keystroke.
+
+### Declarative Presentation Configuration
+Configure presentation behaviors, tool dimensions, colors, and decay durations directly via JSON without editing JavaScript code:
+
+```html
+<script type="application/json" id="paraslides-config">
+{
+  "cursorAutoHide": {
+    "enabled": true,
+    "delayMs": 2500,
+    "fullscreenOnly": false
+  },
+  "laserPointer": {
+    "enabled": true,
+    "size": 18,
+    "glowSpread": 14
+  },
+  "telestrator": {
+    "enabled": true,
+    "fadeDurationMs": 3000,
+    "strokeWidth": 3.5
+  }
+}
+</script>
+```
 
 
 ---
@@ -132,6 +177,7 @@ Initialize via ES modules:
 
 ```javascript
 import { loadDeckFromDOM } from './src/adapters/parsers/dom-loader.js';
+import { loadConfigFromDOM } from './src/adapters/parsers/config-loader.js';
 import { createCommandDispatcher } from './src/ports/input.js';
 import { attachViewportRenderer } from './src/adapters/render/viewport.js';
 import { attachHudRenderer } from './src/adapters/render/hud.js';
@@ -142,16 +188,23 @@ import { attachPrintAdapter, injectPrintStyles } from './src/adapters/render/pri
 import { attachFullscreenAdapter } from './src/adapters/render/fullscreen.js';
 import { attachVimExtensionAdvisory } from './src/adapters/input/vim-extension-advisory.js';
 import { attachPresenterOrb, injectPresenterOrbStyles } from './src/adapters/render/presenter-orb.js';
+import { attachCursorAutoHide, injectCursorAutoHideStyles } from './src/adapters/render/cursor-auto-hide.js';
+import { attachLaserPointer, injectLaserPointerStyles } from './src/adapters/render/laser-pointer.js';
+import { attachTelestrator, injectTelestratorStyles } from './src/adapters/render/telestrator.js';
 
 const deck = document.getElementById('deck');
 const hud = document.getElementById('hud');
 
+const config = loadConfigFromDOM(deck);
 const { topology, slideMap } = loadDeckFromDOM(deck);
 const dispatcher = createCommandDispatcher(topology);
 
 injectMapStyles();
 injectPrintStyles();
 injectPresenterOrbStyles();
+injectCursorAutoHideStyles();
+injectLaserPointerStyles();
+injectTelestratorStyles();
 
 attachViewportRenderer(dispatcher, deck, { slideMap });
 attachHudRenderer(dispatcher, hud);
@@ -162,6 +215,16 @@ attachPrintAdapter(deck, window);
 attachFullscreenAdapter(dispatcher, document.documentElement);
 attachVimExtensionAdvisory(document.body);
 attachPresenterOrb(dispatcher, document.body);
+
+if (config.cursorAutoHide?.enabled) {
+  attachCursorAutoHide(document.body, config.cursorAutoHide);
+}
+if (config.laserPointer?.enabled) {
+  attachLaserPointer(dispatcher, document.body, config.laserPointer);
+}
+if (config.telestrator?.enabled) {
+  attachTelestrator(dispatcher, document.body, config.telestrator);
+}
 ```
 
 ---
@@ -257,12 +320,14 @@ Run the test suite using Node's native test runner (zero external test dependenc
 npm test
 ```
 
-Includes **323 unit and integration tests** (100% pass rate) across 104 test suites covering:
+Includes **364 unit and integration tests** (100% pass rate) across 113 test suites covering:
 - Pure topology bounds, sparse tree structures, and validation
-- Deterministic state machine transitions & cursor memory (`lastX`, `lastZ`)
+- Deterministic state machine transitions & cursor memory (`desiredX`, `lastZ`)
+- Declarative configuration schema, validation, and DOM loader
 - Inbound and Outbound Hexagonal Ports & contracts
 - DOM Loader, Keyboard listener, Viewport CSS transforms, 3D Radar HUD, Hash Router, 2D Overview Map, and Print-to-PDF
 - Native Fullscreen, Vim browser extension shield, and Presenter Status Orb
+- Fullscreen Cursor Auto-Hide, Glowing Laser Spotlight, and Ephemeral Fading Telestrator
 - Markdown, LaTeX Beamer, Math equation rendering, and bidirectional serialization round-trips.
 
 
