@@ -20,10 +20,20 @@
 
       --hud-bg: rgba(18, 20, 26, 0.88);
       --hud-fg: #eef0f6;
+      --hud-fg-dim: rgba(255, 255, 255, 0.3);
       --hud-border: rgba(255, 255, 255, 0.12);
       --hud-accent: #5c9eff;
       --hud-accent-detour: #ff8c5c;
       --hud-locked-warning: #ff4757;
+
+      --dock-bottom: 1.75rem;
+      --dock-right: 2rem;
+      --orb-size: 11px;
+      --dock-gap: 0.85rem;
+      --orb-color-normal: var(--accent-main, #5c9eff);
+      --orb-color-detour: var(--accent-detour, #ff8c5c);
+      --orb-color-section-end: #c084fc;
+      --orb-glow-spread: 8px;
 
       --slide-width: 100vw;
       --slide-height: 100vh;
@@ -344,15 +354,15 @@
     }
 
     .key-table td:first-child {
-      width: 160px;
+      width: 180px;
     }
 
     /* Fixed-Dimension HUD pill conforming to Ticket 04 */
     #hud,
     .paraslides-hud {
       position: fixed;
-      bottom: 1.75rem;
-      right: 2rem;
+      bottom: var(--dock-bottom, 1.75rem);
+      right: var(--dock-right, 2rem);
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -373,7 +383,13 @@
       -webkit-backdrop-filter: blur(10px);
       user-select: none;
       pointer-events: auto;
-      transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease, right 0.25s ease;
+    }
+
+    #hud.has-orb-adjacent,
+    body:has(#presenter-orb:not(.is-hidden)) #hud,
+    .paraslides-hud.has-orb-adjacent {
+      right: calc(var(--dock-right, 2rem) + var(--orb-size, 11px) + var(--dock-gap, 0.85rem)) !important;
     }
 
     #hud[data-mode="MAIN"],
@@ -397,25 +413,26 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 1.75rem;
+      min-width: 1.5rem;
       padding: 0.15rem 0.45rem;
       border-radius: 4px;
       background: rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.3);
-      font-size: 0.78rem;
-      font-weight: 600;
+      color: var(--hud-fg-dim);
+      font-size: 0.82rem;
+      font-weight: 700;
       cursor: default;
       transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
     }
 
     .hud-detour-cue.is-active {
-      color: var(--hud-current-accent);
-      background: rgba(255, 255, 255, 0.15);
+      color: var(--hud-accent-detour);
+      background: rgba(255, 255, 255, 0.12);
       cursor: pointer;
     }
 
     .hud-detour-cue.is-disabled {
-      opacity: 0.3;
+      color: var(--hud-fg-dim);
+      opacity: 0.35;
       pointer-events: none;
     }
 
@@ -463,6 +480,18 @@
       animation: hud-locked-shake 0.4s ease-in-out;
     }
 
+    #hud.is-hidden,
+    .paraslides-hud.is-hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+
+    :fullscreen #hud,
+    :-webkit-full-screen #hud {
+      z-index: 10000;
+    }
+
     @keyframes hud-locked-shake {
       10%, 90% { transform: translate3d(-1px, 0, 0); }
       20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -502,7 +531,7 @@
         </article>
       </div>
 
-      <!-- Page 0.1: Vim Document Metaphor -->
+      <!-- Page 0.1: Vim Document Metaphor (Ordered X, Y, Z) -->
       <div class="deck-page" data-page-title="Document Metaphor">
         <article class="slide slide-main" data-slide-title="Vim Document Metaphor">
           <div class="slide-content">
@@ -513,12 +542,12 @@
             </p>
             <div class="grid-cards">
               <div class="card">
-                <h3>Sections are Rows (Y)</h3>
-                <p>Moving vertically with <kbd>j</kbd> / <kbd>k</kbd> changes lines while preserving your horizontal column position (sticky column <code>desiredX</code>).</p>
-              </div>
-              <div class="card">
                 <h3>Pages are Columns (X)</h3>
                 <p>Moving horizontally with <kbd>h</kbd> / <kbd>l</kbd> traverses pages on the line. Moving past the end wraps smoothly into the next row!</p>
+              </div>
+              <div class="card">
+                <h3>Sections are Rows (Y)</h3>
+                <p>Moving vertically with <kbd>j</kbd> / <kbd>k</kbd> changes lines while preserving your horizontal column position (sticky column <code>desiredX</code>).</p>
               </div>
               <div class="card">
                 <h3>Detours are Depth (Z)</h3>
@@ -529,8 +558,9 @@
         </article>
       </div>
 
-      <!-- Page 0.2: Linear Progression -->
+      <!-- Page 0.2: Linear Progression with Attached Philosophy Detour -->
       <div class="deck-page" data-page-title="Linear Progression">
+        <!-- Main Slide (z = 0) -->
         <article class="slide slide-main" data-slide-title="Linear Flow & Wrapping">
           <div class="slide-content">
             <span class="tagline">Presentation Flow</span>
@@ -541,8 +571,32 @@
             <div class="callout">
               <p>
                 Within a row, pressing <kbd>Space</kbd> advances to the next column. At the end of a section, it automatically wraps to column 1 of the next row.
-                Try pressing <kbd>Space</kbd> right now to advance to Section 1!
+                Notice the HUD illuminated <kbd>i</kbd> cue below: press <kbd>i</kbd> to explore the design philosophy detour!
               </p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide (z = 1) -->
+        <article class="slide slide-detour" data-slide-title="Detour: Non-Linear Philosophy">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Depth 1/1 &bull; Design Philosophy</div>
+            <h2>Non-Linear Freedom Without Disruption</h2>
+            <p class="lead">
+              Traditional slide decks force presenters into a rigid linear compromise: either flood main slides with technical appendices or lose audience context.
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Zero Presentation Risk</h3>
+                <p>If time runs short or questions don't arise, the presenter continues linearly with <kbd>Space</kbd> without detours ever being exposed.</p>
+              </div>
+              <div class="card">
+                <h3>Instant Deep Dive</h3>
+                <p>When an audience member asks for technical proof, pressing <kbd>i</kbd> dives instantly into supporting material.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Press <kbd>o</kbd> or <kbd>Esc</kbd> (or click <kbd>o</kbd> in the HUD) to return to the Main Track.</p>
             </div>
           </div>
         </article>
@@ -578,7 +632,7 @@
         </article>
       </div>
 
-      <!-- Page 1.1: Attached Detour Sequence (Multi-Slide Detour) -->
+      <!-- Page 1.1: Attached Detour Sequence (Multi-Slide Detour: 3 Slides) -->
       <div class="deck-page" data-page-title="Detour Deep Dive">
         <!-- Main Slide (z = 0) -->
         <article class="slide slide-main" data-slide-title="Attached Detour Stacks">
@@ -586,11 +640,11 @@
             <span class="tagline">Supplementary Depth</span>
             <h2>Attached Detour Sequence</h2>
             <p class="lead">
-              This page has an attached 3-slide technical deep dive. Look at the HUD pill below: the <kbd>[i]</kbd> button slot is now illuminated and clickable!
+              This page has an attached 3-slide technical deep dive. Look at the HUD pill below: the <kbd>i</kbd> button slot is now illuminated and clickable!
             </p>
             <div class="callout">
               <p>
-                Press <kbd>i</kbd> (or click <kbd>[i]</kbd> on the HUD) to enter Detour Mode!
+                Press <kbd>i</kbd> (or click <kbd>i</kbd> on the HUD) to enter Detour Mode!
               </p>
             </div>
           </div>
@@ -650,7 +704,7 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
               </div>
             </div>
             <div class="callout">
-              <p>Press <kbd>o</kbd> or <kbd>Esc</kbd> (or click <kbd>[o]</kbd>) to return to the Main Track.</p>
+              <p>Press <kbd>o</kbd> or <kbd>Esc</kbd> (or click <kbd>o</kbd>) to return to the Main Track.</p>
             </div>
           </div>
         </article>
@@ -683,19 +737,43 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
         </article>
       </div>
 
+      <!-- Page 1.3: Coordinate Topology & State Purity -->
+      <div class="deck-page" data-page-title="Topology & Cursor Memory">
+        <article class="slide slide-main" data-slide-title="State Purity & Cursor Memory">
+          <div class="slide-content">
+            <span class="tagline">State Integrity</span>
+            <h2>Sticky Column & Cursor Memory</h2>
+            <p class="lead">
+              Every vertical transition preserves or restores horizontal column context intuitively:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Sticky desiredX</h3>
+                <p>If you navigate to column 5 and move down into a short 2-page section, paraslides clamps to page 2. Moving into a wider section immediately restores column 5!</p>
+              </div>
+              <div class="card">
+                <h3>lastX[y] Memory</h3>
+                <p>Each row remembers your last visited column. Returning to a previously visited section immediately restores your exact previous location.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
     </section>
 
     <!-- ======================================================================
-         Section 2: Overview Menu & HUD
+         Section 2: Overview Menu, HUD & Presenter Orb
          ====================================================================== -->
-    <section class="deck-section" data-section-title="Overview Menu & HUD">
+    <section class="deck-section" data-section-title="Overview Menu, HUD & Presenter Orb">
 
-      <!-- Page 2.0: Dedicated Overview Menu -->
+      <!-- Page 2.0: Dedicated Overview Menu (No (m) in title) -->
       <div class="deck-page" data-page-title="Overview Menu">
+        <!-- Main Slide (z = 0) -->
         <article class="slide slide-main" data-slide-title="2D Overview Matrix">
           <div class="slide-content">
             <span class="tagline">Bird's-Eye View</span>
-            <h2>Dedicated Overview Menu (<kbd>m</kbd>)</h2>
+            <h2>Dedicated Overview Menu</h2>
             <p class="lead">
               Press <kbd>m</kbd> at any time to open the full 2D presentation map overlay.
             </p>
@@ -713,6 +791,33 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
                 <p>Press <kbd>m</kbd> or <kbd>Esc</kbd> to close without altering your current slide position.</p>
               </div>
             </div>
+            <div class="callout">
+              <p>Press <kbd>i</kbd> to view the attached technical detour on how the 2D matrix map operates without DOM cloning.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide (z = 1) -->
+        <article class="slide slide-detour" data-slide-title="Detour: Spatial Matrix Map">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Depth 1/1 &bull; Map Architecture</div>
+            <h2>Zero-Clone Matrix Rendering</h2>
+            <p class="lead">
+              The 2D map overlay constructs an interactive CSS grid directly from the Core Topology:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Lightweight DOM</h3>
+                <p>Only actual slides are rendered in the matrix. No ghost elements or memory leaks.</p>
+              </div>
+              <div class="card">
+                <h3>Isolated Cursor</h3>
+                <p>Selection in map mode updates a local transient pointer <code>(selY, selX)</code> until confirmed with <kbd>Enter</kbd>.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Press <kbd>o</kbd> or <kbd>Esc</kbd> to return to the overview page.</p>
+            </div>
           </div>
         </article>
       </div>
@@ -729,9 +834,104 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
             <div class="callout">
               <p>
                 - <strong>Coordinates:</strong> <code>Col x/X &bull; Row y/Y</code> in Main track, and <code>Col x/X &bull; Dep z/Z</code> in Detour track.<br>
-                - <strong>Morphing Key:</strong> Displays grayed-out <kbd>[i]</kbd> when no detour is available, active <kbd>[i]</kbd> when detours exist, and active <kbd>[o]</kbd> inside detours.<br>
-                - <strong>Directional Radar:</strong> 4-way arrow compass with wrap indicators (<kbd>↳</kbd> and <kbd>↰</kbd>).
+                - <strong>Morphing Key:</strong> Displays grayed-out <kbd>i</kbd> when no detour is available, active <kbd>i</kbd> when detours exist, and active <kbd>o</kbd> inside detours.<br>
+                - <strong>Directional Radar:</strong> 4-way arrow compass with wrap indicators (<kbd>↳</kbd> and <kbd>↰</kbd>).<br>
+                - <strong>Toggle Bar:</strong> Press <kbd>b</kbd> at any time (including Fullscreen) to toggle the HUD navigation bar on or off.
               </p>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 2.2: Fullscreen Presentation Mode -->
+      <div class="deck-page" data-page-title="Fullscreen Mode">
+        <article class="slide slide-main" data-slide-title="Native Fullscreen Display">
+          <div class="slide-content">
+            <span class="tagline">Immersion</span>
+            <h2>Fullscreen Presentation Mode</h2>
+            <p class="lead">
+              Deliver presentations without browser chrome, bookmarks, or tabs:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>One-Key Toggle</h3>
+                <p>Press <kbd>f</kbd> at any time to toggle native fullscreen mode via the HTML5 Fullscreen API.</p>
+              </div>
+              <div class="card">
+                <h3>Cross-Platform Support</h3>
+                <p>Works smoothly across modern desktop browsers and Android/iPad tablets with safe rejection handling.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Try pressing <kbd>f</kbd> right now to enter fullscreen presentation mode!</p>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Page 2.3: Presenter Status Orb & Ambient Beacon -->
+      <div class="deck-page" data-page-title="Presenter Status Orb">
+        <!-- Main Slide (z = 0) -->
+        <article class="slide slide-main" data-slide-title="Ambient Presenter Beacon">
+          <div class="slide-content">
+            <span class="tagline">Ambient Signaling</span>
+            <h2>Presenter Status Orb</h2>
+            <p class="lead">
+              A subtle, non-intrusive glowing beacon docked at the bottom right corner of the screen:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Four Color States</h3>
+                <p>
+                  <strong>Blue:</strong> Standard slide.<br>
+                  <strong>Orange:</strong> Detour available or inside detour.<br>
+                  <strong>Purple:</strong> End of section (next step wraps row).<br>
+                  <strong>Dual Ring:</strong> Detour on section end (orange center, purple halo).
+                </p>
+              </div>
+              <div class="card">
+                <h3>Independent Toggles</h3>
+                <p>
+                  Press <kbd>b</kbd> to toggle the HUD navigation bar.<br>
+                  Press <kbd>B</kbd> to toggle the Presenter Orb.<br>
+                  Hide both for zero-distraction presentation mode!
+                </p>
+              </div>
+              <div class="card">
+                <h3>Aligned Docking</h3>
+                <p>
+                  The orb always anchors at the bottom right. When the HUD bar is shown, it sits to the left of the orb on the same horizontal line.
+                </p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>
+                Notice the bottom right corner right now! Because this is the final slide of this section <em>and</em> it has an attached detour, you can see the dual-ring glow: an orange core with a purple halo ring! Press <kbd>i</kbd> to view the attached detour!
+              </p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide (z = 1) -->
+        <article class="slide slide-detour" data-slide-title="Detour: Status Orb Priority Architecture">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Depth 1/1 &bull; Status Orb Architecture</div>
+            <h2>Status Priority & Visual Architecture</h2>
+            <p class="lead">
+              How paraslides prioritizes multi-dimensional presentation state:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Detour Priority</h3>
+                <p>Detours represent content branches that might be missed. When both a detour is available and the slide is at the end of a section, the orb core prioritizes the detour color.</p>
+              </div>
+              <div class="card">
+                <h3>Concentric Halo Ring</h3>
+                <p>To retain spatial wrap awareness, CSS renders a concentric purple outline halo around the orange core, providing both cues simultaneously.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Press <kbd>o</kbd> or <kbd>Esc</kbd> (or click the orb) to return to the parent slide.</p>
             </div>
           </div>
         </article>
@@ -744,8 +944,9 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
          ====================================================================== -->
     <section class="deck-section" data-section-title="Keybindings & Architecture">
 
-      <!-- Page 3.0: Keybindings Reference -->
+      <!-- Page 3.0: Keybindings Reference with Attached Extension Detour -->
       <div class="deck-page" data-page-title="Key Reference">
+        <!-- Main Slide (z = 0) -->
         <article class="slide slide-main" data-slide-title="Complete Navigation Matrix">
           <div class="slide-content">
             <span class="tagline">Reference Guide</span>
@@ -773,6 +974,22 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
                   <td>Exit Detour sequence back to parent slide. (In menu: aborts without moving).</td>
                 </tr>
                 <tr>
+                  <td><kbd>f</kbd></td>
+                  <td>Toggle fullscreen presentation mode.</td>
+                </tr>
+                <tr>
+                  <td><kbd>b</kbd></td>
+                  <td>Toggle visibility of HUD navigation bar in any mode.</td>
+                </tr>
+                <tr>
+                  <td><kbd>B</kbd></td>
+                  <td>Toggle visibility of Presenter Status Orb in any mode.</td>
+                </tr>
+                <tr>
+                  <td><kbd>m</kbd></td>
+                  <td>Toggle 2D Overview Map overlay.</td>
+                </tr>
+                <tr>
                   <td><kbd>0</kbd> / <kbd>$</kbd></td>
                   <td>Jump to start / end of current row.</td>
                 </tr>
@@ -785,15 +1002,62 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
                   <td>Multiplier prefix (e.g. <kbd>3l</kbd>, <kbd>2j</kbd>, <kbd>5gg</kbd>).</td>
                 </tr>
                 <tr>
-                  <td><kbd>m</kbd></td>
-                  <td>Toggle 2D Overview Map overlay.</td>
-                </tr>
-                <tr>
                   <td><kbd>Ctrl</kbd> + <kbd>P</kbd></td>
                   <td>Print presentation to PDF (interleaved or main-only layouts).</td>
                 </tr>
               </tbody>
             </table>
+            <div class="callout">
+              <p>Press <kbd>i</kbd> to see how paraslides shields against Vim browser extension collisions!</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide 1 (z = 1) -->
+        <article class="slide slide-detour" data-slide-title="Detour: Input Capture Architecture">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Depth 1/2 &bull; Input Pipeline</div>
+            <h2>Input Adapter & Capture Phase</h2>
+            <p class="lead">
+              How paraslides ensures keystroke reliability across all operating environments:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Capture Phase Priority</h3>
+                <p>Event listeners attach in the DOM capture phase, evaluating keystrokes before bubbling handlers or child elements can swallow them.</p>
+              </div>
+              <div class="card">
+                <h3>Propagation Shields</h3>
+                <p>Recognized commands invoke <code>stopPropagation()</code> to prevent browser window scrolling or secondary actions.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Press <kbd>l</kbd> to scrub forward to extension collision detection.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Detour Slide 2 (z = 2) -->
+        <article class="slide slide-detour" data-slide-title="Detour: Extension Conflict Detection">
+          <div class="slide-content">
+            <div class="badge-detour">Detour Depth 2/2 &bull; Extension Compatibility</div>
+            <h2>Vim Browser Extension Compatibility</h2>
+            <p class="lead">
+              Extensions like Vimium, Vimium C, and Surfingkeys inject custom content scripts that map keys:
+            </p>
+            <div class="grid-cards">
+              <div class="card">
+                <h3>Automatic Detection</h3>
+                <p>paraslides probes for known extension signatures (DOM markers, global objects) upon initialization.</p>
+              </div>
+              <div class="card">
+                <h3>User Advisory</h3>
+                <p>If an extension is detected, a subtle toast advises users to enter insert mode (<kbd>i</kbd>) or add a site exclusion rule for conflict-free navigation.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <p>Press <kbd>o</kbd> or <kbd>Esc</kbd> to return to the key reference table.</p>
+            </div>
           </div>
         </article>
       </div>
@@ -842,6 +1106,9 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
     import { attachHashRouter } from './src/adapters/input/hash-router.js';
     import { attachMapMode, injectMapStyles } from './src/adapters/render/map-mode.js';
     import { attachPrintAdapter, injectPrintStyles } from './src/adapters/render/print.js';
+    import { attachFullscreenAdapter } from './src/adapters/render/fullscreen.js';
+    import { attachVimExtensionAdvisory } from './src/adapters/input/vim-extension-advisory.js';
+    import { attachPresenterOrb, injectPresenterOrbStyles } from './src/adapters/render/presenter-orb.js';
 
     const deckEl = document.getElementById('deck');
     const hudEl = document.getElementById('hud');
@@ -851,6 +1118,7 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
 
     injectMapStyles();
     injectPrintStyles();
+    injectPresenterOrbStyles();
 
     attachViewportRenderer(dispatcher, deckEl, { slideMap });
     attachHudRenderer(dispatcher, hudEl);
@@ -858,6 +1126,9 @@ const nextState = dispatch(state, { type: 'MOVE_RIGHT' });
     attachHashRouter(dispatcher, window);
     attachMapMode(dispatcher, deckEl, { topology });
     attachPrintAdapter(deckEl, window);
+    attachFullscreenAdapter(dispatcher, document.documentElement);
+    attachVimExtensionAdvisory(document.body);
+    attachPresenterOrb(dispatcher, document.body);
   </script>
 
 </body>

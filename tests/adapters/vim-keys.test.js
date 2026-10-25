@@ -24,7 +24,10 @@ import {
   COMMAND_NEXT_SLIDE,
   COMMAND_JUMP_TOP_ROW,
   COMMAND_JUMP_BOTTOM_ROW,
-  COMMAND_JUMP_ROW
+  COMMAND_JUMP_ROW,
+  COMMAND_TOGGLE_FULLSCREEN,
+  COMMAND_TOGGLE_HUD,
+  COMMAND_TOGGLE_ORB
 } from '../../src/core/navigator.js';
 
 import { createCommandDispatcher } from '../../src/ports/input.js';
@@ -119,6 +122,9 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
       assert.strictEqual(KEY_BINDINGS[' '], COMMAND_NEXT_SLIDE);
       assert.strictEqual(KEY_BINDINGS.Enter, COMMAND_NEXT_SLIDE);
       assert.strictEqual(KEY_BINDINGS.G, COMMAND_JUMP_BOTTOM_ROW);
+      assert.strictEqual(KEY_BINDINGS.f, COMMAND_TOGGLE_FULLSCREEN);
+      assert.strictEqual(KEY_BINDINGS.b, COMMAND_TOGGLE_HUD);
+      assert.strictEqual(KEY_BINDINGS.B, COMMAND_TOGGLE_ORB);
     });
   });
 
@@ -210,7 +216,7 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
 
       const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
 
-      for (const unmappedKey of ['a', 'b', 'c', 'Tab', 'Backspace', 'F5']) {
+      for (const unmappedKey of ['a', 'c', 'x', 'Tab', 'Backspace', 'F5']) {
         const event = createKeyEvent(unmappedKey);
         mockTarget.dispatchEvent(event);
         assert.strictEqual(event.defaultPrevented, false);

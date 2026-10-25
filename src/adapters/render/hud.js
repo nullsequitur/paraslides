@@ -8,8 +8,8 @@
  *   - MAIN_MODE: `Col ${x + 1}/${totalX} · Row ${y + 1}/${totalY}`
  *   - DETOUR_MODE: `Col ${x + 1}/${totalX} · Dep ${z}/${detourCount}`
  * - Fixed Detour Key Button Slot (.hud-detour-cue):
- *   - MAIN_MODE: `[i]` (dimmed when no detours, illuminated/active when detours exist)
- *   - DETOUR_MODE: `[o]` (illuminated/active indicating exit/return)
+ *   - MAIN_MODE: `i` (dimmed when no detours, illuminated/active when detours exist)
+ *   - DETOUR_MODE: `o` (illuminated/active indicating exit/return)
  * - Directional Radar hints (.hud-radar):
  *   - Reflects navigation capabilities (canMoveUp, canMoveLeft, canMoveDown, canMoveRight)
  *   - Reflects section wrap hints: `↳` for next row wrap, `↰` for prev row wrap
@@ -33,6 +33,7 @@ export const HUD_BASE_STYLES = `
 :root {
   --hud-bg: rgba(18, 20, 26, 0.85);
   --hud-fg: #eef0f6;
+  --hud-fg-dim: rgba(255, 255, 255, 0.3);
   --hud-border: rgba(255, 255, 255, 0.12);
   --hud-accent: #5c9eff;
   --hud-accent-detour: #ff8c5c;
@@ -64,7 +65,16 @@ export const HUD_BASE_STYLES = `
   -webkit-backdrop-filter: blur(8px);
   user-select: none;
   pointer-events: auto;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease, opacity 0.2s ease, visibility 0.2s ease;
+}
+
+#hud.is-hidden,
+.paraslides-hud.is-hidden,
+#hud[data-hidden="true"],
+.paraslides-hud[data-hidden="true"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 #hud[data-mode="MAIN"],
@@ -88,25 +98,26 @@ export const HUD_BASE_STYLES = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.75rem;
+  min-width: 1.5rem;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 0.78rem;
-  font-weight: 600;
+  color: var(--hud-fg-dim);
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: default;
   transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
 .hud-detour-cue.is-active {
-  color: var(--hud-current-accent);
-  background: rgba(255, 255, 255, 0.15);
+  color: var(--hud-accent-detour);
+  background: rgba(255, 255, 255, 0.12);
   cursor: pointer;
 }
 
 .hud-detour-cue.is-disabled {
-  opacity: 0.3;
+  color: var(--hud-fg-dim);
+  opacity: 0.35;
   pointer-events: none;
 }
 
@@ -509,7 +520,6 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
   const hintLeft = getOrCreateChild(radarEl, 'hud-hint-left', 'span', options);
   const hintDown = getOrCreateChild(radarEl, 'hud-hint-down', 'span', options);
   const hintRight = getOrCreateChild(radarEl, 'hud-hint-right', 'span', options);
-  const hintDepth = getOrCreateChild(radarEl, 'hud-hint-depth', 'span', options);
 
   if (hintUp) {
     hintUp.classList?.add('hud-hint');
@@ -531,14 +541,30 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
     if (!hintRight.textContent) hintRight.textContent = '→';
     hintRight.setAttribute?.('title', 'Right (l)');
   }
-  if (hintDepth) {
-    hintDepth.classList?.add('hud-hint');
-    if (!hintDepth.textContent) hintDepth.textContent = '⤓';
-    hintDepth.setAttribute?.('title', 'Detour (i)');
-  }
 
   let lockedTimer = null;
   const pulseDuration = typeof options.pulseDuration === 'number' ? options.pulseDuration : 600;
+
+  let isBarHidden = false;
+
+  /**
+   * Toggles visibility of the HUD navigation bar container.
+   *
+   * @param {boolean} [force] - If provided, forces visible (false) or hidden (true).
+   */
+  function toggleBarVisibility(force) {
+    isBarHidden = force !== undefined ? Boolean(force) : !isBarHidden;
+    if (isBarHidden) {
+      container.classList?.add('is-hidden');
+      container.setAttribute?.('data-hidden', 'true');
+    } else {
+      container.classList?.remove('is-hidden');
+      container.removeAttribute?.('data-hidden');
+    }
+    if (typeof options.onVisibilityChange === 'function') {
+      options.onVisibilityChange(!isBarHidden);
+    }
+  }
 
   /**
    * Clears any active locked-axis transient pulse state.
@@ -603,20 +629,20 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
       }
     }
 
-    // 3. Update Detour Availability & Mode Cues (Fixed slot with morphing [i]/[o])
+    // 3. Update Detour Availability & Mode Cues (Fixed slot with morphing i/o)
     detourCueEl.classList?.remove('is-hidden');
     detourCueEl.classList?.add('is-visible');
     detourCueEl.setAttribute?.('data-visible', 'true');
 
     if (mode === MODE_MAIN || z === 0) {
-      detourCueEl.textContent = '[i]';
+      detourCueEl.textContent = 'i';
       detourCueEl.setAttribute?.('data-mode', 'MAIN');
       if (hasDetour) {
         detourCueEl.classList?.add('is-active');
         detourCueEl.classList?.remove('is-disabled');
         detourCueEl.setAttribute?.('data-enabled', 'true');
         detourCueEl.setAttribute?.('aria-disabled', 'false');
-        detourCueEl.setAttribute?.('title', `Detour (${detourCount} slide${detourCount === 1 ? '' : 's'}) [i]`);
+        detourCueEl.setAttribute?.('title', `Detour (${detourCount} slide${detourCount === 1 ? '' : 's'}) i`);
       } else {
         detourCueEl.classList?.remove('is-active');
         detourCueEl.classList?.add('is-disabled');
@@ -626,13 +652,13 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
       }
     } else {
       // In DETOUR_MODE
-      detourCueEl.textContent = '[o]';
+      detourCueEl.textContent = 'o';
       detourCueEl.setAttribute?.('data-mode', 'DETOUR');
       detourCueEl.classList?.add('is-active');
       detourCueEl.classList?.remove('is-disabled');
       detourCueEl.setAttribute?.('data-enabled', 'true');
       detourCueEl.setAttribute?.('aria-disabled', 'false');
-      detourCueEl.setAttribute?.('title', 'Return from Detour [o]');
+      detourCueEl.setAttribute?.('title', 'Return from Detour o');
     }
 
     // 4. Directional Radar Hints & Wrapping Cues
@@ -673,19 +699,6 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
       }
     }
 
-    // Depth cue in compass (z-axis transition)
-    if (hintDepth) {
-      if (mode === MODE_MAIN || z === 0) {
-        hintDepth.textContent = '⤓';
-        hintDepth.setAttribute?.('title', hasDetour ? 'Enter Detour (i)' : 'No Detours');
-        updateHintElement(hintDepth, hasDetour);
-      } else {
-        hintDepth.textContent = '⤒';
-        hintDepth.setAttribute?.('title', 'Exit Detour (o)');
-        updateHintElement(hintDepth, true);
-      }
-    }
-
     radarEl.setAttribute?.('data-can-move-left', String(canMoveLeft));
     radarEl.setAttribute?.('data-can-move-right', String(canMoveRight));
     radarEl.setAttribute?.('data-can-move-up', String(canMoveUp));
@@ -701,7 +714,12 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
       clearLockedPulse();
     }
 
-    // 6. Optional onRender callback
+    // 6. HUD visibility toggle (via 'b' key / COMMAND_TOGGLE_HUD)
+    if (event.feedback?.toggleHud || event.toggleHud) {
+      toggleBarVisibility();
+    }
+
+    // 7. Optional onRender callback
     if (typeof options.onRender === 'function') {
       options.onRender(event);
     }
@@ -724,6 +742,10 @@ export function attachHudRenderer(dispatcher, hudElement, options = {}) {
     }
   };
 
+  destroy.toggle = toggleBarVisibility;
+  destroy.show = () => toggleBarVisibility(false);
+  destroy.hide = () => toggleBarVisibility(true);
+  destroy.isVisible = () => !isBarHidden;
   destroy.destroy = destroy;
 
   return destroy;

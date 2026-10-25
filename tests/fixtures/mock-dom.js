@@ -78,6 +78,7 @@ export function createMockElement(tagName, options = {}) {
   const attrs = new Map();
   const classSet = new Set();
   const childNodes = [];
+  const listeners = {};
 
   function syncClassesFromAttr(val) {
     classSet.clear();
@@ -103,6 +104,27 @@ export function createMockElement(tagName, options = {}) {
     parentNode: null,
     parentElement: null,
     dataset: {},
+
+    addEventListener(type, listener) {
+      if (!listeners[type]) listeners[type] = [];
+      listeners[type].push(listener);
+    },
+
+    removeEventListener(type, listener) {
+      if (!listeners[type]) return;
+      listeners[type] = listeners[type].filter((l) => l !== listener);
+    },
+
+    dispatchEvent(event) {
+      const type = typeof event === 'string' ? event : event?.type;
+      const list = listeners[type] ? [...listeners[type]] : [];
+      list.forEach((l) => l(event));
+      return true;
+    },
+
+    click() {
+      this.dispatchEvent({ type: 'click' });
+    },
 
     classList: {
       add(...tokens) {

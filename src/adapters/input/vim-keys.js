@@ -21,7 +21,10 @@ import {
   COMMAND_NEXT_SLIDE,
   COMMAND_JUMP_TOP_ROW,
   COMMAND_JUMP_BOTTOM_ROW,
-  COMMAND_JUMP_ROW
+  COMMAND_JUMP_ROW,
+  COMMAND_TOGGLE_FULLSCREEN,
+  COMMAND_TOGGLE_HUD,
+  COMMAND_TOGGLE_ORB
 } from '../../core/navigator.js';
 
 /**
@@ -59,7 +62,10 @@ export const KEY_BINDINGS = Object.freeze({
   m: COMMAND_TOGGLE_MAP,
   ' ': COMMAND_NEXT_SLIDE,
   Enter: COMMAND_NEXT_SLIDE,
-  G: COMMAND_JUMP_BOTTOM_ROW
+  G: COMMAND_JUMP_BOTTOM_ROW,
+  f: COMMAND_TOGGLE_FULLSCREEN,
+  b: COMMAND_TOGGLE_HUD,
+  B: COMMAND_TOGGLE_ORB
 });
 
 function isMapOverlayOpen(target) {
@@ -217,8 +223,8 @@ export function attachKeyboardAdapter(
       return;
     }
 
-    // Shift is permitted for '$' (Shift+4) and 'G' (Shift+g); block other Shift chords
-    if (event.shiftKey && event.key !== '$' && event.key !== 'G') {
+    // Shift is permitted for '$' (Shift+4), 'G' (Shift+g), and 'B' (Shift+b); block other Shift chords
+    if (event.shiftKey && event.key !== '$' && event.key !== 'G' && event.key !== 'B') {
       return;
     }
 
@@ -313,6 +319,9 @@ export function attachKeyboardAdapter(
     if (typeof event.preventDefault === 'function') {
       event.preventDefault();
     }
+    if (typeof event.stopPropagation === 'function') {
+      event.stopPropagation();
+    }
 
     const count = countBuffer ? parseInt(countBuffer, 10) : 1;
     clearBuffer();
@@ -337,11 +346,12 @@ export function attachKeyboardAdapter(
     }
   }
 
-  target.addEventListener('keydown', handleKeyDown);
+  const useCapture = Boolean(options.capture);
+  target.addEventListener('keydown', handleKeyDown, useCapture);
 
   const detach = () => {
     clearBuffer();
-    target.removeEventListener('keydown', handleKeyDown);
+    target.removeEventListener('keydown', handleKeyDown, useCapture);
   };
 
   detach.detach = detach;

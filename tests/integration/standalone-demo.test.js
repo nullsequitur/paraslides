@@ -150,11 +150,20 @@ describe('Standalone index.html Presentation & Interactive Tutorial', () => {
     const deckEl = parseIndexHtmlToDeck(htmlContent);
     const { topology } = loadDeckFromDOM(deckEl);
 
-    // At least 4 sections conforming to Ticket 06
+    // At least 4 sections conforming to Ticket 06 & v0.1 expansion
     assert.ok(topology.sections.length >= 4, `Expected at least 4 sections, got ${topology.sections.length}`);
 
-    // Section 1 has an attached detour sequence with 3 slides
+    // Section 0 has an attached philosophy detour (1 slide)
+    assert.strictEqual(topology.sections[0].pages[2].detours.length, 1);
+
+    // Section 1 has an attached technical deep dive sequence (3 slides)
     assert.strictEqual(topology.sections[1].pages[1].detours.length, 3);
+
+    // Section 2 has an attached 2D matrix map detour (1 slide)
+    assert.strictEqual(topology.sections[2].pages[0].detours.length, 1);
+
+    // Section 3 has an attached input & extension collision detour (2 slides)
+    assert.strictEqual(topology.sections[3].pages[0].detours.length, 2);
   });
 
   it('verifies old orange dot indicator is removed from index.html styles', () => {
@@ -182,49 +191,51 @@ describe('Standalone index.html Presentation & Interactive Tutorial', () => {
     const cueEl = hudEl.querySelector('.hud-detour-cue');
 
     assert.strictEqual(coordEl.textContent, 'Col 1/3 · Row 1/4');
-    assert.strictEqual(cueEl.textContent, '[i]');
+    assert.strictEqual(cueEl.textContent, 'i');
     assert.ok(cueEl.classList.contains('is-disabled'));
 
     // 1. Linear progression using Space
     pressKey(mockWin, ' '); // Col 2/3 · Row 1/4
     assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 1/4');
 
-    pressKey(mockWin, ' '); // Col 3/3 · Row 1/4
+    pressKey(mockWin, ' '); // Col 3/3 · Row 1/4 (Page 0.2 has 1 detour!)
     assert.strictEqual(coordEl.textContent, 'Col 3/3 · Row 1/4');
+    assert.strictEqual(cueEl.textContent, 'i');
+    assert.ok(cueEl.classList.contains('is-active'));
 
-    // Space wraps to next section: Col 1/3 · Row 2/4
+    // Space wraps to next section: Col 1/4 · Row 2/4
     pressKey(mockWin, ' ');
-    assert.strictEqual(coordEl.textContent, 'Col 1/3 · Row 2/4');
+    assert.strictEqual(coordEl.textContent, 'Col 1/4 · Row 2/4');
 
-    // 2. Navigate to detour page with 'l': Col 2/3 · Row 2/4
+    // 2. Navigate to detour page with 'l': Col 2/4 · Row 2/4
     pressKey(mockWin, 'l');
-    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/4');
-    assert.strictEqual(cueEl.textContent, '[i]');
+    assert.strictEqual(coordEl.textContent, 'Col 2/4 · Row 2/4');
+    assert.strictEqual(cueEl.textContent, 'i');
     assert.ok(cueEl.classList.contains('is-active'));
 
     // 3. Enter Detour with 'i' -> Dep 1/3
     pressKey(mockWin, 'i');
-    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 1/3');
-    assert.strictEqual(cueEl.textContent, '[o]');
+    assert.strictEqual(coordEl.textContent, 'Col 2/4 · Dep 1/3');
+    assert.strictEqual(cueEl.textContent, 'o');
     assert.ok(cueEl.classList.contains('is-active'));
 
     // Scrub inside detour with 'l' -> Dep 2/3
     pressKey(mockWin, 'l');
-    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 2/3');
+    assert.strictEqual(coordEl.textContent, 'Col 2/4 · Dep 2/3');
 
     // Vertical navigation in detour mode is locked
     pressKey(mockWin, 'j');
-    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 2/3');
+    assert.strictEqual(coordEl.textContent, 'Col 2/4 · Dep 2/3');
     assert.ok(hudEl.classList.contains('is-locked-pulse'));
 
     // Scrub to end of detour -> Dep 3/3
     pressKey(mockWin, 'l');
-    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 3/3');
+    assert.strictEqual(coordEl.textContent, 'Col 2/4 · Dep 3/3');
 
-    // Exit detour with 'o' -> returns to parent slide Col 2/3 · Row 2/4
+    // Exit detour with 'o' -> returns to parent slide Col 2/4 · Row 2/4
     pressKey(mockWin, 'o');
-    assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/4');
-    assert.strictEqual(cueEl.textContent, '[i]');
+    assert.strictEqual(coordEl.textContent, 'Col 2/4 · Row 2/4');
+    assert.strictEqual(cueEl.textContent, 'i');
 
     // 4. Vim jump to bottom with 'G'
     pressKey(mockWin, 'G');

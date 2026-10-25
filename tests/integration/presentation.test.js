@@ -151,7 +151,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
 
     const detourCueEl = hudEl.querySelector('.hud-detour-cue');
-    assert.strictEqual(detourCueEl.textContent, '[i]');
+    assert.strictEqual(detourCueEl.textContent, 'i');
     assert.ok(detourCueEl.classList.contains('is-disabled'));
 
     // ------------------------------------------------------------------------
@@ -190,8 +190,8 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     assert.ok(slide110.classList.contains('has-detour'));
     assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
 
-    // Detour Cue should now show active [i]
-    assert.strictEqual(detourCueEl.textContent, '[i]');
+    // Detour Cue should now show active i
+    assert.strictEqual(detourCueEl.textContent, 'i');
     assert.ok(detourCueEl.classList.contains('is-active'));
 
     // ------------------------------------------------------------------------
@@ -208,9 +208,9 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     const detourSlide1 = slideMap.getSlide(1, 1, 1);
     assert.ok(detourSlide1.classList.contains('is-active'));
 
-    // HUD shows detour coordinate format and morphing [o] return cue
+    // HUD shows detour coordinate format and morphing o return cue
     assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 1/2');
-    assert.strictEqual(detourCueEl.textContent, '[o]');
+    assert.strictEqual(detourCueEl.textContent, 'o');
     assert.ok(detourCueEl.classList.contains('is-active'));
 
     // ------------------------------------------------------------------------
@@ -417,9 +417,9 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     pressKey(mockWin, 'j'); // Move down to section 1, page 0: (1, 0, 0)
     assert.strictEqual(mockWin.location.hash, '#1/0');
 
-    // Detour cue is dimmed [i] at (1, 0, 0) and look-ahead dots are removed from HUD compass
+    // Detour cue is dimmed i at (1, 0, 0) and look-ahead dots are removed from HUD compass
     const detourCue = hudEl.querySelector('.hud-detour-cue');
-    assert.strictEqual(detourCue.textContent, '[i]');
+    assert.strictEqual(detourCue.textContent, 'i');
     assert.ok(detourCue.classList.contains('is-disabled'));
     const hintRight = hudEl.querySelector('.hud-hint-right');
     assert.strictEqual(hintRight.classList.contains('has-detour-lookahead'), false);

@@ -45,10 +45,10 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       assert.ok(coordEl);
       assert.strictEqual(coordEl.textContent, 'Col 1/2 · Row 1/3');
 
-      // Detour cue displays dimmed [i] at (0, 0, 0) since it has 0 detours
+      // Detour cue displays dimmed i at (0, 0, 0) since it has 0 detours
       const cueEl = hudContainer.querySelector('.hud-detour-cue');
       assert.ok(cueEl);
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
       assert.ok(cueEl.classList.contains('is-disabled'));
       assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'true');
@@ -93,7 +93,7 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
   });
 
   describe('Detour Availability Cue and Radar Wrapping in MAIN Mode', () => {
-    it('displays morphing [i] button slot and section wrapping cues', () => {
+    it('displays morphing i button slot and section wrapping cues', () => {
       const deckElement = createStandardMockDeckDOM();
       const { topology } = loadDeckFromDOM(deckElement);
       const dispatcher = createCommandDispatcher(topology);
@@ -104,11 +104,10 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       const cueEl = hudContainer.querySelector('.hud-detour-cue');
       const hintRight = hudContainer.querySelector('.hud-hint-right');
       const hintLeft = hudContainer.querySelector('.hud-hint-left');
-      const hintDepth = hudContainer.querySelector('.hud-hint-depth');
 
       // Navigate to Section 1, Page 0 (1, 0, 0) - 0 detours
       dispatcher.dispatch('MOVE_DOWN');
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
       assert.ok(cueEl.classList.contains('is-disabled'));
       assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'true');
@@ -121,21 +120,18 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       // Lookahead indicators are removed
       assert.strictEqual(hintRight.classList.contains('has-detour-lookahead'), false);
       assert.strictEqual(hintLeft.classList.contains('has-detour-lookahead'), false);
-      assert.ok(hintDepth.classList.contains('is-disabled'));
 
       // Navigate to Page 1 (1, 1, 0) - 2 detours
       dispatcher.dispatch('MOVE_RIGHT');
       assert.strictEqual(cueEl.getAttribute('data-visible'), 'true');
       assert.ok(cueEl.classList.contains('is-active'));
       assert.strictEqual(cueEl.classList.contains('is-disabled'), false);
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
       assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'false');
-      assert.ok(hintDepth.classList.contains('is-active'));
-      assert.strictEqual(hintDepth.textContent, '⤓');
 
       // Navigate to Page 2 (1, 2, 0) - 0 detours (last page of Section 1)
       dispatcher.dispatch('MOVE_RIGHT');
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
       assert.ok(cueEl.classList.contains('is-disabled'));
       assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'true');
 
@@ -169,7 +165,7 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       dispatcher.dispatch('MOVE_RIGHT');
 
       assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
       assert.ok(cueEl.classList.contains('is-active'));
 
       // Enter Detour Mode
@@ -178,18 +174,13 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'DETOUR');
       assert.strictEqual(hudContainer.getAttribute('data-active-z'), '1');
       assert.strictEqual(coordEl.textContent, 'Col 2/3 · Dep 1/2');
-      assert.strictEqual(cueEl.textContent, '[o]');
+      assert.strictEqual(cueEl.textContent, 'o');
       assert.ok(cueEl.classList.contains('is-active'));
       assert.strictEqual(cueEl.getAttribute('aria-disabled'), 'false');
 
       // Vertical radar directions strictly locked/disabled in detour mode
       assert.ok(hintUp.classList.contains('is-disabled'));
       assert.ok(hintDown.classList.contains('is-disabled'));
-
-      // In DETOUR mode, depth hint represents return/exit (o)
-      const hintDepth = hudContainer.querySelector('.hud-hint-depth');
-      assert.ok(hintDepth.classList.contains('is-active'));
-      assert.strictEqual(hintDepth.textContent, '⤒');
 
       // At z = 1, can scrub right but not left
       assert.ok(hintLeft.classList.contains('is-disabled'));
@@ -210,7 +201,7 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'MAIN');
       assert.strictEqual(hudContainer.getAttribute('data-active-z'), '0');
       assert.strictEqual(coordEl.textContent, 'Col 2/3 · Row 2/3');
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
       assert.ok(cueEl.classList.contains('is-active'));
 
       renderer.destroy();
@@ -244,7 +235,7 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
 
       const cueEl = hudContainer.querySelector('.hud-detour-cue');
 
-      // At (0, 0, 0) clicking disabled [i] is a no-op
+      // At (0, 0, 0) clicking disabled i is a no-op
       cueEl.dispatchEvent({ type: 'click' });
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'MAIN');
 
@@ -252,15 +243,15 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
       dispatcher.dispatch('MOVE_DOWN');
       dispatcher.dispatch('MOVE_RIGHT');
 
-      // Click active [i] button
+      // Click active i button
       cueEl.dispatchEvent({ type: 'click' });
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'DETOUR');
-      assert.strictEqual(cueEl.textContent, '[o]');
+      assert.strictEqual(cueEl.textContent, 'o');
 
-      // Click active [o] button to return
+      // Click active o button to return
       cueEl.dispatchEvent({ type: 'click' });
       assert.strictEqual(hudContainer.getAttribute('data-mode'), 'MAIN');
-      assert.strictEqual(cueEl.textContent, '[i]');
+      assert.strictEqual(cueEl.textContent, 'i');
 
       renderer.destroy();
     });
@@ -418,6 +409,49 @@ describe('HUD & Radar Indicator Adapter (src/adapters/render/hud.js)', () => {
     it('injectHudStyles returns null for invalid document target', () => {
       assert.strictEqual(injectHudStyles(null), null);
       assert.strictEqual(injectHudStyles({}), null);
+    });
+  });
+
+  describe('HUD Visibility Toggle (b / COMMAND_TOGGLE_HUD)', () => {
+    it('toggles .is-hidden and data-hidden on COMMAND_TOGGLE_HUD', () => {
+      const deckElement = createStandardMockDeckDOM();
+      const { topology } = loadDeckFromDOM(deckElement);
+      const dispatcher = createCommandDispatcher(topology);
+
+      const hudContainer = createMockElement('aside', { id: 'hud' });
+      let visibleEvent = null;
+      const renderer = attachHudRenderer(dispatcher, hudContainer, {
+        onVisibilityChange: (v) => {
+          visibleEvent = v;
+        }
+      });
+
+      assert.strictEqual(renderer.isVisible(), true);
+      assert.strictEqual(hudContainer.classList.contains('is-hidden'), false);
+
+      // Dispatch TOGGLE_HUD
+      dispatcher.dispatch('TOGGLE_HUD');
+
+      assert.strictEqual(renderer.isVisible(), false);
+      assert.strictEqual(hudContainer.classList.contains('is-hidden'), true);
+      assert.strictEqual(hudContainer.getAttribute('data-hidden'), 'true');
+      assert.strictEqual(visibleEvent, false);
+
+      // Dispatch TOGGLE_HUD again to restore
+      dispatcher.dispatch('TOGGLE_HUD');
+
+      assert.strictEqual(renderer.isVisible(), true);
+      assert.strictEqual(hudContainer.classList.contains('is-hidden'), false);
+      assert.strictEqual(hudContainer.getAttribute('data-hidden'), null);
+      assert.strictEqual(visibleEvent, true);
+
+      // Methods show/hide
+      renderer.hide();
+      assert.strictEqual(renderer.isVisible(), false);
+      renderer.show();
+      assert.strictEqual(renderer.isVisible(), true);
+
+      renderer.destroy();
     });
   });
 

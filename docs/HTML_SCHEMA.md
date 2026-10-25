@@ -114,9 +114,16 @@ fixed-dimension, non-intrusive status indicators:
    - `MAIN_MODE`: `Col {x + 1}/{totalX} · Row {y + 1}/{totalY}`
    - `DETOUR_MODE`: `Col {x + 1}/{totalX} · Dep {z}/{detourCount}` (or `Dep {z}/{detourCount}` in compact mode)
 2. **Fixed Detour Button Slot:** Morphing button maintaining constant HUD dimensions:
-   - `MAIN_MODE`: Displays `[i]` (dimmed when no detour is available on current page, illuminated and clickable when detour exists).
-   - `DETOUR_MODE`: Displays `[o]` (illuminated and clickable, signaling exit/return).
+   - `MAIN_MODE`: Displays `i` (dimmed when no detour is available on current page, illuminated and clickable when detour exists via `var(--hud-accent-detour)`).
+   - `DETOUR_MODE`: Displays `o` (illuminated and clickable via `var(--hud-accent-detour)`, signaling exit/return).
 3. **Directional Radar & Section Wrap Indicators:**
-   - 4-way hints (`↑`, `↓`, `←`, `→`).
+   - 4-way hints (`↑`, `↓`, `←`, `→`). Depth is indicated exclusively by the dedicated `i`/`o` button slot.
    - Reflects continuous section wrapping: `↳` (next section wrap on right arrow) and `↰` (prev section wrap on left arrow).
    - Reflects vertical lock pulse (`is-locked-pulse`) during locked vertical navigation attempts in detour mode.
+4. **Visibility Toggle (`b`):**
+   - Pressing `b` (`COMMAND_TOGGLE_HUD`) toggles `.is-hidden` / `data-hidden="true"` on `#hud` across every mode (including Fullscreen) for distraction-free presenting.
+5. **Presenter Status Orb (`B`):**
+   - Minimal ambient beacon at bottom-right corner with zero hardcoded colors.
+   - Reflects slide context: normal presenting (`var(--accent-main)`), detour available (`var(--accent-detour)` pulse), in-detour (`var(--accent-detour)`), and end-of-section (`var(--orb-color-section-end)` pulse).
+   - Position dynamically offsets above `#hud` when `#hud` is visible to prevent overlap, and nests at the bottom-right corner when `#hud` is hidden.
+   - Toggled via `B` (`COMMAND_TOGGLE_ORB`).

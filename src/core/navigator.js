@@ -95,6 +95,24 @@ export const COMMAND_JUMP_BOTTOM_ROW = 'JUMP_BOTTOM_ROW';
 export const COMMAND_JUMP_ROW = 'JUMP_ROW';
 
 /**
+ * Command constant: Toggle fullscreen presentation mode.
+ * @constant {string}
+ */
+export const COMMAND_TOGGLE_FULLSCREEN = 'TOGGLE_FULLSCREEN';
+
+/**
+ * Command constant: Toggle visibility of the HUD navigation bar.
+ * @constant {string}
+ */
+export const COMMAND_TOGGLE_HUD = 'TOGGLE_HUD';
+
+/**
+ * Command constant: Toggle visibility of the Presenter Status Orb.
+ * @constant {string}
+ */
+export const COMMAND_TOGGLE_ORB = 'TOGGLE_ORB';
+
+/**
  * Frozen map of all supported navigation commands.
  * @constant {Readonly<{
  *   MOVE_LEFT: string,
@@ -110,7 +128,10 @@ export const COMMAND_JUMP_ROW = 'JUMP_ROW';
  *   NEXT_SLIDE: string,
  *   JUMP_TOP_ROW: string,
  *   JUMP_BOTTOM_ROW: string,
- *   JUMP_ROW: string
+ *   JUMP_ROW: string,
+ *   TOGGLE_FULLSCREEN: string,
+ *   TOGGLE_HUD: string,
+ *   TOGGLE_ORB: string
  * }>}
  */
 export const COMMANDS = Object.freeze({
@@ -127,7 +148,10 @@ export const COMMANDS = Object.freeze({
   NEXT_SLIDE: COMMAND_NEXT_SLIDE,
   JUMP_TOP_ROW: COMMAND_JUMP_TOP_ROW,
   JUMP_BOTTOM_ROW: COMMAND_JUMP_BOTTOM_ROW,
-  JUMP_ROW: COMMAND_JUMP_ROW
+  JUMP_ROW: COMMAND_JUMP_ROW,
+  TOGGLE_FULLSCREEN: COMMAND_TOGGLE_FULLSCREEN,
+  TOGGLE_HUD: COMMAND_TOGGLE_HUD,
+  TOGGLE_ORB: COMMAND_TOGGLE_ORB
 });
 
 /**
@@ -605,6 +629,21 @@ export function processCommand(topology, currentState, command) {
 
     case COMMAND_TOGGLE_MAP: {
       feedback = { toggleMap: true };
+      break;
+    }
+
+    case COMMAND_TOGGLE_FULLSCREEN: {
+      feedback = { toggleFullscreen: true };
+      break;
+    }
+
+    case COMMAND_TOGGLE_HUD: {
+      feedback = { toggleHud: true };
+      break;
+    }
+
+    case COMMAND_TOGGLE_ORB: {
+      feedback = { toggleOrb: true };
       break;
     }
 

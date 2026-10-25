@@ -33,7 +33,7 @@ theming.
    - **Viewport Renderer:** Applies active classes, CSS 3D/spatial transitions,
      and switches between Primary Hue and Detour Hue.
    - **Minimal HUD:** Displays current coordinates, detour availability badge
-     (`[i]`), and vertical lock indicator in `DETOUR_MODE`.
+     (`i`), and vertical lock indicator in `DETOUR_MODE`.
 4. **Standalone Bundle (`index.html`):**
    - Single runnable HTML file demonstrating multi-section navigation, section
      cursor memory, and multi-slide detours.
