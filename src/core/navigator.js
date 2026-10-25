@@ -113,6 +113,24 @@ export const COMMAND_TOGGLE_HUD = 'TOGGLE_HUD';
 export const COMMAND_TOGGLE_ORB = 'TOGGLE_ORB';
 
 /**
+ * Command constant: Toggle glowing laser spotlight presenter tool.
+ * @constant {string}
+ */
+export const COMMAND_TOGGLE_LASER = 'TOGGLE_LASER';
+
+/**
+ * Command constant: Toggle ephemeral fading telestrator drawing tool.
+ * @constant {string}
+ */
+export const COMMAND_TOGGLE_TELESTRATOR = 'TOGGLE_TELESTRATOR';
+
+/**
+ * Command constant: Clear all ephemeral fading telestrator drawings immediately.
+ * @constant {string}
+ */
+export const COMMAND_CLEAR_TELESTRATOR = 'CLEAR_TELESTRATOR';
+
+/**
  * Frozen map of all supported navigation commands.
  * @constant {Readonly<{
  *   MOVE_LEFT: string,
@@ -131,7 +149,10 @@ export const COMMAND_TOGGLE_ORB = 'TOGGLE_ORB';
  *   JUMP_ROW: string,
  *   TOGGLE_FULLSCREEN: string,
  *   TOGGLE_HUD: string,
- *   TOGGLE_ORB: string
+ *   TOGGLE_ORB: string,
+ *   TOGGLE_LASER: string,
+ *   TOGGLE_TELESTRATOR: string,
+ *   CLEAR_TELESTRATOR: string
  * }>}
  */
 export const COMMANDS = Object.freeze({
@@ -151,7 +172,10 @@ export const COMMANDS = Object.freeze({
   JUMP_ROW: COMMAND_JUMP_ROW,
   TOGGLE_FULLSCREEN: COMMAND_TOGGLE_FULLSCREEN,
   TOGGLE_HUD: COMMAND_TOGGLE_HUD,
-  TOGGLE_ORB: COMMAND_TOGGLE_ORB
+  TOGGLE_ORB: COMMAND_TOGGLE_ORB,
+  TOGGLE_LASER: COMMAND_TOGGLE_LASER,
+  TOGGLE_TELESTRATOR: COMMAND_TOGGLE_TELESTRATOR,
+  CLEAR_TELESTRATOR: COMMAND_CLEAR_TELESTRATOR
 });
 
 /**
@@ -644,6 +668,21 @@ export function processCommand(topology, currentState, command) {
 
     case COMMAND_TOGGLE_ORB: {
       feedback = { toggleOrb: true };
+      break;
+    }
+
+    case COMMAND_TOGGLE_LASER: {
+      feedback = { toggleLaser: true };
+      break;
+    }
+
+    case COMMAND_TOGGLE_TELESTRATOR: {
+      feedback = { toggleTelestrator: true };
+      break;
+    }
+
+    case COMMAND_CLEAR_TELESTRATOR: {
+      feedback = { clearTelestrator: true };
       break;
     }
 

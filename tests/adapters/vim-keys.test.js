@@ -27,7 +27,10 @@ import {
   COMMAND_JUMP_ROW,
   COMMAND_TOGGLE_FULLSCREEN,
   COMMAND_TOGGLE_HUD,
-  COMMAND_TOGGLE_ORB
+  COMMAND_TOGGLE_ORB,
+  COMMAND_TOGGLE_LASER,
+  COMMAND_TOGGLE_TELESTRATOR,
+  COMMAND_CLEAR_TELESTRATOR
 } from '../../src/core/navigator.js';
 
 import { createCommandDispatcher } from '../../src/ports/input.js';
@@ -125,6 +128,9 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
       assert.strictEqual(KEY_BINDINGS.f, COMMAND_TOGGLE_FULLSCREEN);
       assert.strictEqual(KEY_BINDINGS.b, COMMAND_TOGGLE_HUD);
       assert.strictEqual(KEY_BINDINGS.B, COMMAND_TOGGLE_ORB);
+      assert.strictEqual(KEY_BINDINGS.p, COMMAND_TOGGLE_LASER);
+      assert.strictEqual(KEY_BINDINGS.t, COMMAND_TOGGLE_TELESTRATOR);
+      assert.strictEqual(KEY_BINDINGS.c, COMMAND_CLEAR_TELESTRATOR);
     });
   });
 
@@ -180,7 +186,10 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
       { key: 'o', expectedCommand: COMMAND_EXIT_DETOUR },
       { key: 'Escape', expectedCommand: COMMAND_EXIT_DETOUR },
       { key: '0', expectedCommand: COMMAND_JUMP_START },
-      { key: '$', expectedCommand: COMMAND_JUMP_END }
+      { key: '$', expectedCommand: COMMAND_JUMP_END },
+      { key: 'p', expectedCommand: COMMAND_TOGGLE_LASER },
+      { key: 't', expectedCommand: COMMAND_TOGGLE_TELESTRATOR },
+      { key: 'c', expectedCommand: COMMAND_CLEAR_TELESTRATOR }
     ];
 
     for (const { key, expectedCommand } of testCases) {
@@ -216,7 +225,7 @@ describe('Keyboard Input Adapter (src/adapters/input/vim-keys.js)', () => {
 
       const handle = attachKeyboardAdapter(mockDispatcher, mockTarget);
 
-      for (const unmappedKey of ['a', 'c', 'x', 'Tab', 'Backspace', 'F5']) {
+      for (const unmappedKey of ['a', 'q', 'x', 'Tab', 'Backspace', 'F5']) {
         const event = createKeyEvent(unmappedKey);
         mockTarget.dispatchEvent(event);
         assert.strictEqual(event.defaultPrevented, false);

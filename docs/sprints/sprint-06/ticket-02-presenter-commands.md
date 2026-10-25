@@ -1,6 +1,6 @@
 # Ticket: T06-02 - Core Presenter Commands, Feedback Payloads & Vim Keybindings
 
-- **Status:** TODO
+- **Status:** DONE
 - **Sprint:** Sprint 06
 - **Target Layer:** Core (`src/core/navigator.js`) & Input Adapter (`src/adapters/input/vim-keys.js`)
 - **Assigned Model Tier:** Default / Inherit
@@ -21,12 +21,15 @@ Add abstract presenter tool commands to the pure domain Core and wire them to Vi
    - Support custom keybinding mappings provided via declarative config or adapter options.
 
 ## 2. Acceptance Criteria
-- [ ] `COMMAND_TOGGLE_LASER`, `COMMAND_TOGGLE_TELESTRATOR`, `COMMAND_CLEAR_TELESTRATOR` exported in `COMMANDS` object and as individual constants.
-- [ ] `processCommand` preserves coordinates and emits appropriate feedback flags.
-- [ ] `vim-keys.js` maps `p`, `t`, `c` keys unless in editable elements or overview map overlay.
-- [ ] Keybinding map allows overrides passed via configuration options.
-- [ ] 100% test coverage in `tests/core/navigator.test.js` and `tests/adapters/vim-keys.test.js`.
-- [ ] Core invariants completely preserved: pure JavaScript, zero DOM dependencies in `src/core/`.
+- [x] `COMMAND_TOGGLE_LASER`, `COMMAND_TOGGLE_TELESTRATOR`, `COMMAND_CLEAR_TELESTRATOR` exported in `COMMANDS` object and as individual constants.
+- [x] `processCommand` preserves coordinates and emits appropriate feedback flags.
+- [x] `vim-keys.js` maps `p`, `t`, `c` keys unless in editable elements or overview map overlay.
+- [x] Keybinding map allows overrides passed via configuration options.
+- [x] 100% test coverage in `tests/core/navigator.test.js` and `tests/adapters/vim-keys.test.js`.
+- [x] Core invariants completely preserved: pure JavaScript, zero DOM dependencies in `src/core/`.
 
 ## 3. Worker Notes & Retro Feedback
-[Populated upon completion]
+- Added `COMMAND_TOGGLE_LASER`, `COMMAND_TOGGLE_TELESTRATOR`, and `COMMAND_CLEAR_TELESTRATOR` in `src/core/navigator.js` and registered them in `COMMANDS`.
+- Updated `processCommand` to emit `{ toggleLaser: true }`, `{ toggleTelestrator: true }`, and `{ clearTelestrator: true }` in `feedback` while keeping coordinates completely unchanged.
+- Bound <kbd>p</kbd>, <kbd>t</kbd>, and <kbd>c</kbd> in `src/adapters/input/vim-keys.js`.
+- All 86 tests in `navigator.test.js` and `vim-keys.test.js` pass with 100%. Pure hexagonal isolation preserved.

@@ -17,6 +17,12 @@ import {
   COMMAND_JUMP_TOP_ROW,
   COMMAND_JUMP_BOTTOM_ROW,
   COMMAND_JUMP_ROW,
+  COMMAND_TOGGLE_FULLSCREEN,
+  COMMAND_TOGGLE_HUD,
+  COMMAND_TOGGLE_ORB,
+  COMMAND_TOGGLE_LASER,
+  COMMAND_TOGGLE_TELESTRATOR,
+  COMMAND_CLEAR_TELESTRATOR,
   COMMANDS,
   computeCapabilities,
   buildStatePayload,
@@ -42,6 +48,12 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       assert.equal(COMMAND_JUMP_TOP_ROW, 'JUMP_TOP_ROW');
       assert.equal(COMMAND_JUMP_BOTTOM_ROW, 'JUMP_BOTTOM_ROW');
       assert.equal(COMMAND_JUMP_ROW, 'JUMP_ROW');
+      assert.equal(COMMAND_TOGGLE_FULLSCREEN, 'TOGGLE_FULLSCREEN');
+      assert.equal(COMMAND_TOGGLE_HUD, 'TOGGLE_HUD');
+      assert.equal(COMMAND_TOGGLE_ORB, 'TOGGLE_ORB');
+      assert.equal(COMMAND_TOGGLE_LASER, 'TOGGLE_LASER');
+      assert.equal(COMMAND_TOGGLE_TELESTRATOR, 'TOGGLE_TELESTRATOR');
+      assert.equal(COMMAND_CLEAR_TELESTRATOR, 'CLEAR_TELESTRATOR');
     });
 
     it('exports frozen COMMANDS dictionary', () => {
@@ -59,6 +71,12 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       assert.equal(COMMANDS.JUMP_TOP_ROW, 'JUMP_TOP_ROW');
       assert.equal(COMMANDS.JUMP_BOTTOM_ROW, 'JUMP_BOTTOM_ROW');
       assert.equal(COMMANDS.JUMP_ROW, 'JUMP_ROW');
+      assert.equal(COMMANDS.TOGGLE_FULLSCREEN, 'TOGGLE_FULLSCREEN');
+      assert.equal(COMMANDS.TOGGLE_HUD, 'TOGGLE_HUD');
+      assert.equal(COMMANDS.TOGGLE_ORB, 'TOGGLE_ORB');
+      assert.equal(COMMANDS.TOGGLE_LASER, 'TOGGLE_LASER');
+      assert.equal(COMMANDS.TOGGLE_TELESTRATOR, 'TOGGLE_TELESTRATOR');
+      assert.equal(COMMANDS.CLEAR_TELESTRATOR, 'CLEAR_TELESTRATOR');
     });
   });
 
@@ -647,6 +665,35 @@ describe('Transition Matrix & Command Processor (src/core/navigator.js)', () => 
       const state = createInitialState(topology);
       const res = processCommand(topology, state, { type: COMMAND_NAVIGATE_TO, y: 0, x: 0, z: 0 });
       assert.equal(res.state, state);
+    });
+  });
+
+  describe('Presenter Tool Feedback Commands', () => {
+    it('dispatches COMMAND_TOGGLE_LASER and emits toggleLaser feedback without mutating coordinates', () => {
+      const state = createInitialState(topology);
+      const res = processCommand(topology, state, COMMAND_TOGGLE_LASER);
+
+      assert.strictEqual(res.state, state);
+      assert.strictEqual(res.feedback.toggleLaser, true);
+      assert.strictEqual(res.payload.feedback.toggleLaser, true);
+    });
+
+    it('dispatches COMMAND_TOGGLE_TELESTRATOR and emits toggleTelestrator feedback', () => {
+      const state = createInitialState(topology);
+      const res = processCommand(topology, state, COMMAND_TOGGLE_TELESTRATOR);
+
+      assert.strictEqual(res.state, state);
+      assert.strictEqual(res.feedback.toggleTelestrator, true);
+      assert.strictEqual(res.payload.feedback.toggleTelestrator, true);
+    });
+
+    it('dispatches COMMAND_CLEAR_TELESTRATOR and emits clearTelestrator feedback', () => {
+      const state = createInitialState(topology);
+      const res = processCommand(topology, state, COMMAND_CLEAR_TELESTRATOR);
+
+      assert.strictEqual(res.state, state);
+      assert.strictEqual(res.feedback.clearTelestrator, true);
+      assert.strictEqual(res.payload.feedback.clearTelestrator, true);
     });
   });
 
