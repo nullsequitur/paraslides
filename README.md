@@ -59,6 +59,11 @@ paraslides treats your slide deck like an open document in Vim: **Sections are R
 | **`m`** | — | Toggle 2D Overview Map Mode | Toggle 2D Overview Map Mode |
 | **`Ctrl + P`** | — | Print / Save to PDF | Print / Save to PDF |
 
+### Overview Menu Mode (`m`)
+- **Strict Vim Navigation:** Inside menu mode, `h`, `j`, `k`, `l`, `0`, `$`, `gg`, `G`, and numeric counts (`[count]key`) navigate the 2D grid matrix of slides strictly without line wrapping.
+- **Confirm Selection:** `Enter` or `Space` confirms the active highlighted slide, jumps directly to it, and closes the menu.
+- **Cancel:** `m` or `Escape` closes the menu and restores the slide position from before opening.
+
 
 ---
 

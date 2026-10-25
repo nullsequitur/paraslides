@@ -36,7 +36,7 @@ import {
  * @returns {object} Mock window.
  */
 function createMockWindow(options = {}) {
-  const listeners = new Map();
+  const listeners = [];
   let currentHash = options.hash || '';
 
   return {
@@ -60,24 +60,30 @@ function createMockWindow(options = {}) {
       }
     },
     print() {},
-    addEventListener(type, handler) {
-      if (!listeners.has(type)) {
-        listeners.set(type, new Set());
-      }
-      listeners.get(type).add(handler);
+    addEventListener(type, handler, useCapture = false) {
+      listeners.push({ type, handler, capture: Boolean(useCapture) });
     },
     removeEventListener(type, handler) {
-      if (listeners.has(type)) {
-        listeners.get(type).delete(handler);
+      const idx = listeners.findIndex((l) => l.type === type && l.handler === handler);
+      if (idx !== -1) {
+        listeners.splice(idx, 1);
       }
     },
     dispatchEvent(event) {
       const type = event.type || 'keydown';
-      const set = listeners.get(type);
-      if (set) {
-        for (const handler of Array.from(set)) {
-          handler(event);
-        }
+      let stopped = false;
+      event.stopImmediatePropagation = () => {
+        stopped = true;
+      };
+      event.stopPropagation = () => {
+        stopped = true;
+      };
+      // Run capture listeners first, then non-capture listeners
+      const matching = listeners.filter((l) => l.type === type);
+      matching.sort((a, b) => (b.capture ? 1 : 0) - (a.capture ? 1 : 0));
+      for (const entry of matching) {
+        if (stopped) break;
+        entry.handler(event);
       }
     }
   };
@@ -394,7 +400,7 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     const hud = attachHudRenderer(dispatcher, hudEl);
     const kb = attachKeyboardAdapter(dispatcher, mockWin);
     const router = attachHashRouter(dispatcher, mockWin);
-    const map = attachMapMode(dispatcher, deckEl, { topology });
+    const map = attachMapMode(dispatcher, deckEl, { topology, keyTarget: mockWin });
     const print = attachPrintAdapter(deckEl, mockWin);
 
     // Initial state: (0, 0, 0)
@@ -434,12 +440,14 @@ describe('End-to-End Presentation Integration (index.html simulation)', () => {
     const cards = mapOverlay.querySelectorAll('.paraslides-map-card');
     assert.ok(cards.length > 0);
 
-    // Click card for section 0, page 0
-    cards[0].click();
+    // Strict Vim navigation inside menu mode: navigate to (0, 1) and confirm with Enter
+    pressKey(mockWin, 'k'); // from (1, 1) move up to (0, 1)
+    pressKey(mockWin, 'Enter'); // select (0, 1) and close menu
+
     assert.strictEqual(map.isOpen(), false);
     assert.strictEqual(deckEl.getAttribute('data-active-y'), '0');
-    assert.strictEqual(deckEl.getAttribute('data-active-x'), '0');
-    assert.strictEqual(mockWin.location.hash, '#0/0');
+    assert.strictEqual(deckEl.getAttribute('data-active-x'), '1');
+    assert.strictEqual(mockWin.location.hash, '#0/1');
 
     // 3. Print layout modes
     print.setPrintMode('main-only');

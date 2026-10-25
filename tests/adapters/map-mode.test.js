@@ -182,6 +182,190 @@ describe('Overview / Map Mode Adapter (src/adapters/render/map-mode.js)', () => 
     });
   });
 
+  describe('Strict Vim Keyboard Navigation & Confirmation / Cancellation', () => {
+    function createMockEventTarget() {
+      const listeners = [];
+      return {
+        addEventListener(type, handler, capture) {
+          listeners.push({ type, handler, capture });
+        },
+        removeEventListener(type, handler) {
+          const idx = listeners.findIndex((l) => l.type === type && l.handler === handler);
+          if (idx !== -1) listeners.splice(idx, 1);
+        },
+        dispatchEvent(event) {
+          const copy = [...listeners];
+          for (const l of copy) {
+            if (l.type === (event.type || 'keydown')) {
+              l.handler(event);
+            }
+          }
+        }
+      };
+    }
+
+    function pressKey(target, key, extra = {}) {
+      target.dispatchEvent({
+        type: 'keydown',
+        key,
+        ctrlKey: Boolean(extra.ctrlKey),
+        metaKey: Boolean(extra.metaKey),
+        altKey: Boolean(extra.altKey),
+        shiftKey: Boolean(extra.shiftKey),
+        preventDefault() {},
+        stopImmediatePropagation() {},
+        stopPropagation() {}
+      });
+    }
+
+    it('navigates grid strictly with h/j/k/l without section wrapping', () => {
+      const root = createMockElement('div', { id: 'deck' });
+      const keyTarget = createMockEventTarget();
+      const dispatcher = createCommandDispatcher(topology);
+      const mapMode = attachMapMode(dispatcher, root, { keyTarget });
+
+      mapMode.open();
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 0 });
+
+      // Move right within Section 0 (2 pages: index 0 and 1)
+      pressKey(keyTarget, 'l');
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 1 });
+
+      // Moving right at edge of section 0 does NOT wrap to section 1
+      pressKey(keyTarget, 'l');
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 1 });
+
+      // Move down to Section 1 (3 pages)
+      pressKey(keyTarget, 'j');
+      assert.deepEqual(mapMode.getSelected(), { y: 1, x: 1 });
+
+      // Move right to Section 1, page 2
+      pressKey(keyTarget, 'l');
+      assert.deepEqual(mapMode.getSelected(), { y: 1, x: 2 });
+
+      // Move down to Section 2 (only 1 page, index 0): x is clamped to 0
+      pressKey(keyTarget, 'j');
+      assert.deepEqual(mapMode.getSelected(), { y: 2, x: 0 });
+
+      // Move down at bottom edge remains at section 2
+      pressKey(keyTarget, 'j');
+      assert.deepEqual(mapMode.getSelected(), { y: 2, x: 0 });
+
+      // Move up back to Section 1
+      pressKey(keyTarget, 'k');
+      assert.deepEqual(mapMode.getSelected(), { y: 1, x: 0 });
+
+      // Moving left at start of row does NOT wrap to previous row
+      pressKey(keyTarget, 'h');
+      assert.deepEqual(mapMode.getSelected(), { y: 1, x: 0 });
+
+      mapMode.destroy();
+    });
+
+    it('supports 0, $, gg, G and count multipliers', () => {
+      const root = createMockElement('div', { id: 'deck' });
+      const keyTarget = createMockEventTarget();
+      const dispatcher = createCommandDispatcher(topology);
+      const mapMode = attachMapMode(dispatcher, root, { keyTarget });
+
+      mapMode.open();
+
+      // Jump to last page of current section with $
+      pressKey(keyTarget, '$');
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 1 });
+
+      // Jump to start of row with 0
+      pressKey(keyTarget, '0');
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 0 });
+
+      // Jump to bottom section with G
+      pressKey(keyTarget, 'G');
+      assert.deepEqual(mapMode.getSelected(), { y: 2, x: 0 });
+
+      // Jump to top section with gg
+      pressKey(keyTarget, 'g');
+      pressKey(keyTarget, 'g');
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 0 });
+
+      // Move down with count prefix: 2j -> Section 2
+      pressKey(keyTarget, '2');
+      pressKey(keyTarget, 'j');
+      assert.deepEqual(mapMode.getSelected(), { y: 2, x: 0 });
+
+      mapMode.destroy();
+    });
+
+    it('confirms selection and updates core state with Enter and Space', () => {
+      const root = createMockElement('div', { id: 'deck' });
+      const keyTarget = createMockEventTarget();
+      const dispatcher = createCommandDispatcher(topology);
+      const mapMode = attachMapMode(dispatcher, root, { keyTarget });
+
+      assert.equal(dispatcher.getState().y, 0);
+      assert.equal(dispatcher.getState().x, 0);
+
+      mapMode.open();
+      // Navigate to (1, 2)
+      pressKey(keyTarget, 'j');
+      pressKey(keyTarget, '2');
+      pressKey(keyTarget, 'l');
+      assert.deepEqual(mapMode.getSelected(), { y: 1, x: 2 });
+
+      // While in map mode, core state is NOT changed yet
+      assert.equal(dispatcher.getState().y, 0);
+
+      // Confirm with Enter
+      pressKey(keyTarget, 'Enter');
+
+      // Core state updated to selected slide and map is closed
+      assert.equal(dispatcher.getState().y, 1);
+      assert.equal(dispatcher.getState().x, 2);
+      assert.equal(mapMode.isOpen(), false);
+
+      // Re-open and confirm with Space
+      mapMode.open();
+      pressKey(keyTarget, 'k'); // Move to (0, 1) - clamped to 1
+      assert.deepEqual(mapMode.getSelected(), { y: 0, x: 1 });
+
+      pressKey(keyTarget, ' ');
+      assert.equal(dispatcher.getState().y, 0);
+      assert.equal(dispatcher.getState().x, 1);
+      assert.equal(mapMode.isOpen(), false);
+
+      mapMode.destroy();
+    });
+
+    it('cancels selection with Escape or m and preserves original position', () => {
+      const root = createMockElement('div', { id: 'deck' });
+      const keyTarget = createMockEventTarget();
+      const dispatcher = createCommandDispatcher(topology);
+      const mapMode = attachMapMode(dispatcher, root, { keyTarget });
+
+      mapMode.open();
+      // Move around
+      pressKey(keyTarget, 'j');
+      pressKey(keyTarget, 'l');
+      assert.deepEqual(mapMode.getSelected(), { y: 1, x: 1 });
+
+      // Abort with Escape
+      pressKey(keyTarget, 'Escape');
+      assert.equal(mapMode.isOpen(), false);
+      // Core state was never modified
+      assert.equal(dispatcher.getState().y, 0);
+      assert.equal(dispatcher.getState().x, 0);
+
+      // Re-open, move, and abort with m
+      mapMode.open();
+      pressKey(keyTarget, 'j');
+      pressKey(keyTarget, 'm');
+      assert.equal(mapMode.isOpen(), false);
+      assert.equal(dispatcher.getState().y, 0);
+      assert.equal(dispatcher.getState().x, 0);
+
+      mapMode.destroy();
+    });
+  });
+
   describe('Validation & Error Handling', () => {
     it('throws TypeError if dispatcher is invalid', () => {
       const root = createMockElement('div', { id: 'deck' });

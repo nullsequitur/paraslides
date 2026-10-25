@@ -62,6 +62,17 @@ export const KEY_BINDINGS = Object.freeze({
   G: COMMAND_JUMP_BOTTOM_ROW
 });
 
+function isMapOverlayOpen(target) {
+  const doc = (target && target.document) || (typeof document !== 'undefined' ? document : null);
+  if (doc && typeof doc.querySelector === 'function') {
+    const map = doc.querySelector('#paraslides-map, .paraslides-map-overlay');
+    if (map) {
+      return map.classList?.contains?.('is-open') || map.getAttribute?.('data-open') === 'true';
+    }
+  }
+  return false;
+}
+
 /**
  * Checks if a DOM node or mock element is an interactive text input/form control.
  *
@@ -193,6 +204,11 @@ export function attachKeyboardAdapter(
 
     // Ignore events inside editable inputs or contenteditable regions
     if (shouldIgnoreDueToFocus(event, target)) {
+      return;
+    }
+
+    // Ignore events when overview map overlay is open (handled by map-mode adapter)
+    if (isMapOverlayOpen(target)) {
       return;
     }
 

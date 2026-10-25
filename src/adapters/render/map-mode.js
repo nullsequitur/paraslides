@@ -149,7 +149,9 @@ export const MAP_BASE_STYLES = `
 }
 
 .paraslides-map-card.is-active-card,
-.paraslides-map-card[data-active="true"] {
+.paraslides-map-card.is-selected-card,
+.paraslides-map-card[data-active="true"],
+.paraslides-map-card[data-selected="true"] {
   border-color: #5c9eff;
   box-shadow: 0 0 0 2px rgba(92, 158, 255, 0.4), 0 8px 20px rgba(0, 0, 0, 0.4);
   background: rgba(92, 158, 255, 0.12);
@@ -474,9 +476,58 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
   let isMapOpen = false;
   let activeY = 0;
   let activeX = 0;
+  let originalY = 0;
+  let originalX = 0;
+  let selectedY = 0;
+  let selectedX = 0;
   let cardElements = [];
 
+  let countBuffer = '';
+  let pendingG = false;
+  let bufferTimer = null;
+  const bufferTimeout = typeof options.bufferTimeout === 'number' ? options.bufferTimeout : 2000;
+
+  function clearBuffer() {
+    countBuffer = '';
+    pendingG = false;
+    if (bufferTimer !== null) {
+      clearTimeout(bufferTimer);
+      bufferTimer = null;
+    }
+  }
+
+  function resetBufferTimer() {
+    if (bufferTimer !== null) {
+      clearTimeout(bufferTimer);
+    }
+    bufferTimer = setTimeout(() => {
+      clearBuffer();
+    }, bufferTimeout);
+  }
+
   const topology = options.topology || (typeof dispatcher.getTopology === 'function' ? dispatcher.getTopology() : null);
+
+  /**
+   * Updates card active and selected highlighting when selection cursor moves.
+   */
+  function updateSelectionHighlight() {
+    for (const item of cardElements) {
+      if (item.y === selectedY && item.x === selectedX) {
+        item.element.classList?.add('is-active-card');
+        item.element.classList?.add('is-selected-card');
+        item.element.setAttribute?.('data-active', 'true');
+        item.element.setAttribute?.('data-selected', 'true');
+        if (typeof item.element.scrollIntoView === 'function') {
+          item.element.scrollIntoView({ block: 'nearest' });
+        }
+      } else {
+        item.element.classList?.remove('is-active-card');
+        item.element.classList?.remove('is-selected-card');
+        item.element.removeAttribute?.('data-active');
+        item.element.removeAttribute?.('data-selected');
+      }
+    }
+  }
 
   /**
    * Renders the 2D grid matrix of sections, pages, and detour indicators.
@@ -498,7 +549,7 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
 
     const help = createElement(mapContainer, 'span');
     help.classList?.add('paraslides-map-help');
-    help.textContent = '[m / Space] Toggle · [Click] Jump';
+    help.textContent = '[h/j/k/l] Move · [Enter/Space] Select · [m/Esc] Cancel';
     header.appendChild(help);
 
     const closeBtn = createElement(mapContainer, 'button');
@@ -562,13 +613,17 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
           card.appendChild(badge);
         }
 
-        if (y === activeY && x === activeX) {
+        if (y === selectedY && x === selectedX) {
           card.classList?.add('is-active-card');
+          card.classList?.add('is-selected-card');
           card.setAttribute?.('data-active', 'true');
+          card.setAttribute?.('data-selected', 'true');
         }
 
         // On card click: jump to slide and close map
         card.addEventListener?.('click', () => {
+          selectedY = y;
+          selectedX = x;
           dispatcher.dispatch({
             type: COMMAND_NAVIGATE_TO,
             y,
@@ -590,26 +645,16 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
   }
 
   /**
-   * Updates card active highlighting when coordinates change.
-   */
-  function updateActiveHighlight() {
-    for (const item of cardElements) {
-      if (item.y === activeY && item.x === activeX) {
-        item.element.classList?.add('is-active-card');
-        item.element.setAttribute?.('data-active', 'true');
-      } else {
-        item.element.classList?.remove('is-active-card');
-        item.element.removeAttribute?.('data-active');
-      }
-    }
-  }
-
-  /**
    * Opens the Overview Map overlay.
    */
   function open() {
     if (isMapOpen) return;
     isMapOpen = true;
+    originalY = activeY;
+    originalX = activeX;
+    selectedY = activeY;
+    selectedX = activeX;
+    clearBuffer();
     renderGrid();
     mapContainer.classList?.add('is-open');
     mapContainer.setAttribute?.('data-open', 'true');
@@ -624,6 +669,7 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
   function close() {
     if (!isMapOpen) return;
     isMapOpen = false;
+    clearBuffer();
     mapContainer.classList?.remove('is-open');
     mapContainer.setAttribute?.('data-open', 'false');
     if (typeof options.onToggle === 'function') {
@@ -655,23 +701,179 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
     // React to COMMAND_TOGGLE_MAP feedback
     if (event.feedback?.toggleMap || event.toggleMap) {
       toggle();
-    } else if (isMapOpen) {
-      updateActiveHighlight();
     }
   });
 
   const handleKeydown = (event) => {
     if (!isMapOpen || !event) return;
+
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+
+    if (event.shiftKey && event.key !== '$' && event.key !== 'G') {
+      return;
+    }
+
+    // Cancel commands: 'm' or 'Escape'
     if (event.key === 'Escape' || event.key === 'm') {
       if (typeof event.preventDefault === 'function') {
         event.preventDefault();
       }
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
+      if (countBuffer.length > 0 || pendingG) {
+        clearBuffer();
+        return;
+      }
       close();
+      return;
     }
+
+    // Confirm commands: 'Enter' or ' ' (Space)
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (typeof event.preventDefault === 'function') {
+        event.preventDefault();
+      }
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
+      clearBuffer();
+      dispatcher.dispatch({
+        type: COMMAND_NAVIGATE_TO,
+        y: selectedY,
+        x: selectedX,
+        z: 0
+      });
+      close();
+      return;
+    }
+
+    const sectionCount = topology ? getSectionCount(topology) : 1;
+
+    // Numeric count prefix: '1'-'9', or '0' if count buffer is active
+    if (event.key >= '1' && event.key <= '9') {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      pendingG = false;
+      countBuffer += event.key;
+      resetBufferTimer();
+      return;
+    }
+
+    if (event.key === '0') {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      if (countBuffer.length > 0) {
+        countBuffer += '0';
+        resetBufferTimer();
+      } else {
+        // Strict Vim jump to start of line/row
+        selectedX = 0;
+        updateSelectionHighlight();
+      }
+      return;
+    }
+
+    // '$' jump to end of line/row
+    if (event.key === '$') {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      clearBuffer();
+      const pageCount = topology ? getPageCount(topology, selectedY) : 1;
+      selectedX = Math.max(0, pageCount - 1);
+      updateSelectionHighlight();
+      return;
+    }
+
+    // 'gg' or [count]gg jump to row
+    if (event.key === 'g') {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      if (pendingG) {
+        const count = countBuffer ? parseInt(countBuffer, 10) : 0;
+        clearBuffer();
+        if (count > 0) {
+          selectedY = Math.min(sectionCount - 1, Math.max(0, count - 1));
+        } else {
+          selectedY = 0;
+        }
+        const pageCount = topology ? getPageCount(topology, selectedY) : 1;
+        selectedX = Math.min(selectedX, Math.max(0, pageCount - 1));
+        updateSelectionHighlight();
+        return;
+      }
+      pendingG = true;
+      resetBufferTimer();
+      return;
+    }
+
+    if (pendingG && event.key !== 'g') {
+      clearBuffer();
+    }
+
+    // 'G' or [count]G jump to row
+    if (event.key === 'G') {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      const count = countBuffer ? parseInt(countBuffer, 10) : 0;
+      clearBuffer();
+      if (count > 0) {
+        selectedY = Math.min(sectionCount - 1, Math.max(0, count - 1));
+      } else {
+        selectedY = Math.max(0, sectionCount - 1);
+      }
+      const pageCount = topology ? getPageCount(topology, selectedY) : 1;
+      selectedX = Math.min(selectedX, Math.max(0, pageCount - 1));
+      updateSelectionHighlight();
+      return;
+    }
+
+    // Directional keys: h, l, j, k, and arrows
+    const isLeft = event.key === 'h' || event.key === 'ArrowLeft';
+    const isRight = event.key === 'l' || event.key === 'ArrowRight';
+    const isUp = event.key === 'k' || event.key === 'ArrowUp';
+    const isDown = event.key === 'j' || event.key === 'ArrowDown';
+
+    if (isLeft || isRight || isUp || isDown) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+
+      const count = countBuffer ? parseInt(countBuffer, 10) : 1;
+      clearBuffer();
+
+      const pageCount = topology ? getPageCount(topology, selectedY) : 1;
+
+      if (isLeft) {
+        // Strict Vim movement: NO section wrap inside menu!
+        selectedX = Math.max(0, selectedX - count);
+      } else if (isRight) {
+        // Strict Vim movement: NO section wrap inside menu!
+        selectedX = Math.min(Math.max(0, pageCount - 1), selectedX + count);
+      } else if (isUp) {
+        selectedY = Math.max(0, selectedY - count);
+        const newPageCount = topology ? getPageCount(topology, selectedY) : 1;
+        selectedX = Math.min(selectedX, Math.max(0, newPageCount - 1));
+      } else if (isDown) {
+        selectedY = Math.min(Math.max(0, sectionCount - 1), selectedY + count);
+        const newPageCount = topology ? getPageCount(topology, selectedY) : 1;
+        selectedX = Math.min(selectedX, Math.max(0, newPageCount - 1));
+      }
+
+      updateSelectionHighlight();
+      return;
+    }
+
+    clearBuffer();
   };
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('keydown', handleKeydown);
+  const keyTarget = options.keyTarget
+    || (root && root.ownerDocument ? root.ownerDocument.defaultView : null)
+    || (typeof window !== 'undefined' ? window : null);
+
+  if (keyTarget && typeof keyTarget.addEventListener === 'function') {
+    keyTarget.addEventListener('keydown', handleKeydown, true);
   }
 
   /**
@@ -679,8 +881,8 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
    */
   const destroy = function destroy() {
     close();
-    if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
-      window.removeEventListener('keydown', handleKeydown);
+    if (keyTarget && typeof keyTarget.removeEventListener === 'function') {
+      keyTarget.removeEventListener('keydown', handleKeydown, true);
     }
     unsubscribe();
     if (mapContainer && mapContainer.parentNode && typeof mapContainer.parentNode.removeChild === 'function') {
@@ -692,6 +894,7 @@ export function attachMapMode(dispatcher, rootTarget = (typeof document !== 'und
   destroy.close = close;
   destroy.toggle = toggle;
   destroy.isOpen = isOpen;
+  destroy.getSelected = () => ({ y: selectedY, x: selectedX });
   destroy.destroy = destroy;
 
   return destroy;
