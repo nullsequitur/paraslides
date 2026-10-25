@@ -124,33 +124,41 @@ export const VIEWPORT_BASE_STYLES = `
   transform-style: preserve-3d;
   transition: opacity var(--transition-speed) ease,
               transform var(--transition-speed) var(--transition-timing);
-  transform: translateZ(calc((var(--z, 0) - var(--active-z, 0)) * -600px));
+}
+
+/* Primary slide styling and mild depth retreat in DETOUR mode */
+.slide.slide-main {
+  transform: translateZ(0) scale(1);
+}
+
+#deck[data-mode="DETOUR"] .slide.slide-main {
+  transform: translateZ(-150px) scale(0.95);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Detour slide layout: scrubs horizontally relative to active z */
+.slide.slide-detour {
+  transform: translateX(calc((var(--z, 1) - var(--active-z, 1)) * 100vw));
+  opacity: 0;
+  pointer-events: none;
+}
+
+#deck[data-mode="MAIN"] .slide.slide-detour {
+  transform: translateZ(-150px) scale(0.95);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .slide.is-active,
 .slide[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
-  transform: translateZ(0px);
+  transform: translate3d(0, 0, 0) scale(1) !important;
 }
 
-.slide.slide-main.has-detour::after {
-  content: "";
-  position: absolute;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--accent-detour);
-  box-shadow: 0 0 8px var(--accent-detour);
-  opacity: 0.8;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.slide.slide-main.has-detour:hover::after {
-  transform: scale(1.4);
-  opacity: 1;
+.slide.slide-main.has-detour {
+  /* Detour availability is displayed cleanly by HUD indicator */
 }
 `.trim();
 

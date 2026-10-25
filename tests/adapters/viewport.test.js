@@ -324,6 +324,14 @@ describe('Viewport Renderer Adapter (src/adapters/render/viewport.js)', () => {
       assert.ok(VIEWPORT_BASE_STYLES.includes('.is-active'));
       assert.ok(VIEWPORT_BASE_STYLES.includes('.has-detour'));
       assert.ok(VIEWPORT_BASE_STYLES.includes('perspective'));
+
+      // Mild depth transitions and horizontal detour slide scrubbing
+      assert.ok(VIEWPORT_BASE_STYLES.includes('scale(0.95)'));
+      assert.ok(VIEWPORT_BASE_STYLES.includes('.slide.slide-detour'));
+      assert.ok(VIEWPORT_BASE_STYLES.includes('translateX'));
+
+      // Slide-level orange blob pseudo-element is removed to prevent HUD collision
+      assert.strictEqual(VIEWPORT_BASE_STYLES.includes('.slide.slide-main.has-detour::after'), false);
     });
 
     it('injectViewportStyles creates and appends a style tag to target head', () => {
