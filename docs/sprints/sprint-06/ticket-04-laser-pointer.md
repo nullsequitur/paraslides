@@ -1,6 +1,6 @@
 # Ticket: T06-04 - Glowing Laser Spotlight Adapter
 
-- **Status:** TODO
+- **Status:** DONE
 - **Sprint:** Sprint 06
 - **Target Layer:** Adapters (`src/adapters/render/laser-pointer.js`)
 - **Assigned Model Tier:** Default / Inherit
@@ -20,12 +20,15 @@ Implement the Glowing Laser Spotlight Adapter for live presentations:
    - Injects `LASER_POINTER_BASE_STYLES`.
 
 ## 2. Acceptance Criteria
-- [ ] Laser spotlight element mounts into DOM and follows mouse movement accurately.
-- [ ] Toggles on/off in response to `COMMAND_TOGGLE_LASER` feedback event or programmatic call.
-- [ ] Uses CSS custom properties for styling (zero hardcoded color locks).
-- [ ] Syncs with presentation mode (switches between Main and Detour hue when configured).
-- [ ] Cleans up elements and event listeners on `destroy()`.
-- [ ] Comprehensive unit tests in `tests/adapters/laser-pointer.test.js`.
+- [x] Laser spotlight element mounts into DOM and follows mouse movement accurately.
+- [x] Toggles on/off in response to `COMMAND_TOGGLE_LASER` feedback event or programmatic call.
+- [x] Uses CSS custom properties for styling (zero hardcoded color locks).
+- [x] Syncs with presentation mode (switches between Main and Detour hue when configured).
+- [x] Cleans up elements and event listeners on `destroy()`.
+- [x] Comprehensive unit tests in `tests/adapters/laser-pointer.test.js`.
 
 ## 3. Worker Notes & Retro Feedback
-[Populated upon completion]
+- Implemented `attachLaserPointer`, `injectLaserPointerStyles`, and `LASER_POINTER_BASE_STYLES` in `src/adapters/render/laser-pointer.js`.
+- Utilized CSS custom properties (`--laser-color`, `--laser-size`, `--laser-glow`) and hardware-accelerated 3D translations.
+- Added dynamic presentation mode color syncing (Main accent vs Detour accent).
+- All 7 unit tests passing with 100% pass rate. Zero external runtime dependencies.
