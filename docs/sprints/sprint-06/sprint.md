@@ -21,7 +21,7 @@ Implement Epic 06 Presenter Tools according to `docs/ARCHITECTURE.md`, `docs/HTM
 - [x] **[ticket-02-presenter-commands.md](./ticket-02-presenter-commands.md)**: [T06-02] Core presenter commands, feedback payloads, and vim keybindings (`src/core/navigator.js`, `src/adapters/input/vim-keys.js`).
 - [x] **[ticket-03-cursor-autohide.md](./ticket-03-cursor-autohide.md)**: [T06-03] Fullscreen cursor auto-hide adapter with inactivity debouncing (`src/adapters/render/cursor-auto-hide.js`).
 - [x] **[ticket-04-laser-pointer.md](./ticket-04-laser-pointer.md)**: [T06-04] Glowing laser spotlight adapter with tracking & theme sync (`src/adapters/render/laser-pointer.js`).
-- [ ] **[ticket-05-telestrator.md](./ticket-05-telestrator.md)**: [T06-05] Ephemeral fading canvas telestrator adapter with quadratic smoothing & decay loop (`src/adapters/render/telestrator.js`).
+- [x] **[ticket-05-telestrator.md](./ticket-05-telestrator.md)**: [T06-05] Ephemeral fading canvas telestrator adapter with quadratic smoothing & decay loop (`src/adapters/render/telestrator.js`).
 - [ ] **[ticket-06-demo-and-docs.md](./ticket-06-demo-and-docs.md)**: [T06-06] Interactive showcase deck in `index.html`, continuous documentation & integration verification.
 
 ## 4. Retrospective & Gate
