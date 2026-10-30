@@ -114,13 +114,16 @@ When operating under multi-agent orchestration, enforce the rules defined in
 
 3. **Conventional Commit Standard:**
    - Commit messages must follow the Conventional Commits specification:
-     `type(scope): ticket-id concise description`
+     `type(scope): concise description`
+    - **Do not** include ticket IDs, sprint numbers, or other internal process
+      references in commit messages. Tickets and sprints are internal agent
+      organization; the commit message must describe the change itself.
    - Allowed types: `feat`, `fix`, `test`, `docs`, `refactor`, `perf`, `chore`.
    - Examples:
-     - `feat(ports): [T04-01] implement serialization port and format registry`
-     - `feat(parsers): [T04-02] implement markdown inbound adapter and delimiters`
-     - `feat(parsers): [T04-03] implement latex math rendering integration`
-     - `feat(parsers): [T04-04] implement bidirectional latex beamer adapter`
-     - `test(integration): [T04-05] add phase 3 end-to-end format translator tests`
+     - `feat(ports): implement serialization port and format registry`
+     - `feat(parsers): implement markdown inbound adapter and delimiters`
+     - `feat(parsers): implement latex math rendering integration`
+     - `feat(parsers): implement bidirectional latex beamer adapter`
+     - `test(integration): add phase 3 end-to-end format translator tests`
      - `docs(readme): update documentation with phase 2 and phase 3 features`
 

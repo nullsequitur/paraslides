@@ -139,7 +139,8 @@ docs/sprints/
 2. **Atomic Git Commits Per Ticket:**
    - Once all unit tests for a ticket pass and its acceptance criteria are checked off:
      - Stage only the relevant module and test files: `git add <files>`.
-     - Commit using Conventional Commits with ticket reference:
-       `git commit -m "<type>(<scope>): [<TICKET-ID>] <summary>"`
+     - Commit using Conventional Commits, describing the change itself:
+       `git commit -m "<type>(<scope>): <summary>"`
+     - Do not put ticket IDs or sprint numbers in commit messages; they are internal planning artifacts, not public history.
    - Maintain a clean, bisectable git history where each commit represents a single verifiable increment.
 
